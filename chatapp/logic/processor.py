@@ -79,7 +79,7 @@ class EDMProcessor:
     def initialize_llm(self):
         """Initializes the language model with the OpenAI API key."""
         llm = ChatOpenAI(
-            temperature=0.7,
+            temperature=0,
             max_tokens=6000,
             model="gpt-3.5-turbo-16k",
             openai_api_key=OPENAI_API_KEY,
