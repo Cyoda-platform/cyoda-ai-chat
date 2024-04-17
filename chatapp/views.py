@@ -42,7 +42,7 @@ class InitialMappingView(views.APIView):
                 ds_input=serializer.validated_data.get("input", ""),
             )
             return_string = RETURN_DATA["mapping"]
-            question = f"Produce a mapping from this input to this target entity. Input: {initial_mapping_request.ds_input}. Entity: {initial_mapping_request.entity}. {return_string}. Work only with JSON attributes that are simple and not arrays. Do NOT use any atributes that are not present in schema. {return_string}"
+            question = f"Produce a mapping from this input to this target entity. Input: {initial_mapping_request.ds_input}. Entity: {initial_mapping_request.entity}. {return_string}. Work only with JSON attributes that are not arrays. Do NOT use any atributes that are not present in schema. Use correct COMPOSITE transformers. {return_string}"
             logging.info(question)
             # Assuming processor.ask_question returns a JSON string
             # first generate the mapping
@@ -70,7 +70,8 @@ class ScriptMappingView(views.APIView):
     def get(self, request, *args, **kwargs):
         chat_id = request.query_params.get("id", "")
         return_string = RETURN_DATA["script"]
-        question = f"Produce a script for this mapping. {return_string}"
+        question = f"Write a JavaScript Nashorn script to map the given input to given entity. Include more complex attributes of the schema, like arrays if applicable. Use instruction to understand how to write inputSrcPaths for nested objects and arrays. {return_string}"
+        #question = f"Produce a script for this mapping. {return_string}"
         logging.info(question)
         result_json_string = processor.ask_question(chat_id, question)
 

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.document_loaders import GitLoader
+from langchain_community.document_loaders import GitLoader, WebBaseLoader
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
@@ -49,6 +49,8 @@ class EDMProcessor:
         self.llm = self.initialize_llm()
         loader = self.git_loader()
         docs = loader.load()
+        scripting_docs = self.get_web_script_docs()
+        docs.extend(scripting_docs)
         logging.info("Number of documents loaded: %s", len(docs))
 
         text_splitter = self.get_text_splitter()
@@ -75,6 +77,11 @@ class EDMProcessor:
         self.chat_history = ChatHistoryService()
 
         logging.info("Initialization complete")
+
+    def get_web_script_docs(self):
+        web_loader = WebBaseLoader(["https://docs.oracle.com/javase/8/docs/technotes/guides/scripting/prog_guide/javascript.html"])
+        scripting_docs = web_loader.load()
+        return scripting_docs
 
     def initialize_llm(self):
         """Initializes the language model with the OpenAI API key."""
@@ -103,7 +110,7 @@ class EDMProcessor:
 
     def git_loader(self):
         return GitLoader(
-            clone_url=CYODA_AI_REPO_URL,
+            #clone_url=CYODA_AI_REPO_URL,
             repo_path=WORK_DIR,
             branch=CYODA_AI_REPO_BRANCH,
             file_filter=lambda file_path: file_path.startswith(
