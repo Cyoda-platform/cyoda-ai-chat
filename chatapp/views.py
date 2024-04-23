@@ -7,13 +7,17 @@ from .logic.processor import EDMProcessor
 processor = EDMProcessor()
 logging.basicConfig(level=logging.INFO)
 RETURN_DATA = {
-    "mapping": "Return only DataMappingConfigDto json.",
-    "script": "Return ONLY script json object which contains body and inputSrcPaths inside script attribute. Remove any leading text",
+    "mapping": "Return only json array of column mappings.",
+    "script": "Return ONLY javascript nashorn script json object which contains body with javascript code and inputSrcPaths inside script attribute. Remove any leading text",
     "code": "Return javascript nashorn code only. Remove any leading text",
     "random": "",
-    "columns": 'Return only column mapping json object which contains srcColumnPath and etc inside \"column\" attribute. Add to this json one more attribute \"action\" with the value either add or delete depending on the question.',
+    "autocomplete": "Return only the relevant code for autocomplete.",
+    "columns": 'Return only column mapping json object which contains srcColumnPath and etc inside "column" attribute. Add to this json one more attribute "action" with the value either add or delete depending on the question.',
 }
+#Write a script for notices. Return only the relevant code for autocomplete.
 
+entity_dict = {}
+input_dict = {}
 
 class MessageSerializer(serializers.Serializer):
     id = serializers.CharField(required=False)
@@ -31,6 +35,43 @@ class InitialMappingRequestDTO:
         self.entity = entity
         self.ds_input = ds_input
 
+def get_response_mapping(result_json_string):
+    response_template = {
+                "@bean": "com.cyoda.plugins.mapping.core.dtos.DataMappingConfigDto",
+                "id": "ef7bf900-00b3-11ef-b006-ba4744165259",
+                "name": "test",
+                "lastUpdated": 1713795828907,
+                "dataType": "JSON",
+                "description": "",
+                "entityMappings": [
+                    {
+                        "id": {"id": "ef79fd30-00b3-11ef-b006-ba4744165259"},
+                        "name": "test",
+                        "entityClass": "net.cyoda.saas.model.TenderEntity",
+                        "entityRelationConfigs": [{"srcRelativeRootPath": "root:/"}],
+                        "columns": [],  # Initialize the columns list
+                        "functionalMappings": [],
+                        "columnPathsForUniqueCheck": [],
+                        "metadata": [],
+                        "cobiCoreMetadata": [],
+                        "script": {},
+                        "entityFilter": {
+                            "@bean": "com.cyoda.core.conditions.GroupCondition",
+                            "operator": "AND",
+                            "conditions": [],
+                        },
+                    }
+                ],
+            }
+    try:
+        result_dict = json.loads(result_json_string)
+    except json.JSONDecodeError:
+        return Response(
+            {"error": "Invalid JSON response from processor"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    response_template["entityMappings"][0]["columns"].extend(result_dict)
+    return response_template
 
 class InitialMappingView(views.APIView):
     def post(self, request, *args, **kwargs):
@@ -42,49 +83,51 @@ class InitialMappingView(views.APIView):
                 ds_input=serializer.validated_data.get("input", ""),
             )
             return_string = RETURN_DATA["mapping"]
-            question = f"Produce a mapping from this input to this target entity. Input: {initial_mapping_request.ds_input}. Entity: {initial_mapping_request.entity}. {return_string}. Work only with JSON attributes that are not arrays. Do NOT use any atributes that are not present in schema. Use correct COMPOSITE transformers. {return_string}"
+            question = f"Produce a list of column mappings from input to this target entity. Input: {initial_mapping_request.ds_input}. Target Entity: {initial_mapping_request.entity}. Do NOT add mappings for lists or arrays. If a column is not present in net.cyoda.saas.model.TenderEntity remove it. Use slash for src Return json array of column mappings."
             logging.info(question)
-            # Assuming processor.ask_question returns a JSON string
-            # first generate the mapping
             result_json_string = processor.ask_question(
                 initial_mapping_request.chat_id, question
             )
-            # second - refine the mapping
-
-            # Convert the JSON string back to a Python dictionary
-            try:
-                result_dict = json.loads(result_json_string)
-            except json.JSONDecodeError:
-                return Response(
-                    {"error": "Invalid JSON response from processor"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-
-            return Response(result_dict, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            response_template = get_response_mapping(result_json_string)
+            return Response(response_template, status=status.HTTP_200_OK)
 
 
 class ScriptMappingView(views.APIView):
 
     def get(self, request, *args, **kwargs):
         chat_id = request.query_params.get("id", "")
-        return_string = RETURN_DATA["script"]
-        question = f"Write a JavaScript Nashorn script to map the given input to given entity. Include more complex attributes of the schema, like arrays if applicable. Use instruction to understand how to write inputSrcPaths for nested objects and arrays. {return_string}"
-        #question = f"Produce a script for this mapping. {return_string}"
+        question = f"Write a JavaScript Nashorn script to map the given input to the given entity. Use the instruction. Return only JavaScript Nashorn script."
         logging.info(question)
         result_json_string = processor.ask_question(chat_id, question)
-
-        # Convert the JSON string back to a Python dictionary
+        
         try:
             result_dict = json.loads(result_json_string)
-        except json.JSONDecodeError:
+            if "script" in result_dict and result_dict["script"] is not None:
+                logging.info("RESULT IN SCRIPT")
+                return Response(result_dict, status=status.HTTP_200_OK)           
+        except json.JSONDecodeError as e:
+            logging.error("Invalid JSON response from processor 1")
+        
+        refine_question = "Provide a list of inputSrcPaths for this script. Write correct inputSrcPaths with a forward slash and wildcard if applicable. Return a json array."
+        result_json_string2 = processor.ask_question(chat_id, refine_question)
+        logging.info(result_json_string2)
+        result_dict = {}
+        try:
+            result_dict = json.loads(result_json_string2)
+                       
+        except json.JSONDecodeError as e:
+            # Log the error for debugging purposes
+            logging.error("Invalid JSON response from processor %s", e)
             return Response(
-                {"error": "Invalid JSON response from processor"},
+                {
+                    "error": "Invalid JSON response from processor",
+                    "details": str(e),
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        return Response(result_dict, status=status.HTTP_200_OK)
+    
+        script = {"script": {"body": result_json_string, "inputSrcPaths": result_dict}}
+        return Response(script, status=status.HTTP_200_OK)
 
 
 class ChatMappingClearView(views.APIView):
@@ -122,22 +165,30 @@ class ChatMappingView(views.APIView):
                 else ""
             )
             return_string = RETURN_DATA[chat_mapping_request.return_object]
-            ai_question = f"{chat_mapping_request.question}. {current_script} {return_string}"
+            ai_question = (
+                f"{chat_mapping_request.question}. {current_script} {return_string}"
+            )
             logging.info(ai_question)
             # first generate the mapping
-            result = processor.ask_question(id, ai_question)
-            if chat_mapping_request.return_object in ["random","code"]:
+            result = processor.ask_question(chat_mapping_request.chat_id, ai_question)
+            if chat_mapping_request.return_object in ["random", "code", "autocomplete"]:
                 # Create the response dictionary
                 response_data = {"answer": result}
                 # Return the response as JSON
                 return Response(response_data, status=status.HTTP_200_OK)
+            elif chat_mapping_request.return_object in ["mapping"]:
+                response_template = get_response_mapping(result)
+                return Response(response_template, status=status.HTTP_200_OK)
             try:
                 result_dict = json.loads(result)
             except json.JSONDecodeError as e:
                 # Log the error for debugging purposes
                 logging.error("Invalid JSON response from processor %s", e)
                 return Response(
-                    {"error": "Invalid JSON response from processor", "details": str(e)},
+                    {
+                        "error": "Invalid JSON response from processor",
+                        "details": str(e),
+                    },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
             return Response(result_dict, status=status.HTTP_200_OK)

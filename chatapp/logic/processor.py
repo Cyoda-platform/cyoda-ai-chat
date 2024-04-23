@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.document_loaders import GitLoader, WebBaseLoader
+from langchain_community.document_loaders import GitLoader, WebBaseLoader, DirectoryLoader, TextLoader
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
@@ -47,7 +47,7 @@ class EDMProcessor:
         except ImportError:
             pass
         self.llm = self.initialize_llm()
-        loader = self.git_loader()
+        loader = self.directory_loader()
         docs = loader.load()
         scripting_docs = self.get_web_script_docs()
         docs.extend(scripting_docs)
@@ -57,6 +57,8 @@ class EDMProcessor:
         splits = text_splitter.split_documents(docs)
         vectorstore = self.get_vector_store(splits)
         retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
+        count = vectorstore._collection.count()
+        logging.info("Number of documents in vectorestore: %s", count)
 
         contextualize_q_prompt = self.get_prompt_template()
         history_aware_retriever = create_history_aware_retriever(
@@ -117,6 +119,9 @@ class EDMProcessor:
                 f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}"
             ),
         )
+        
+    def directory_loader(self):
+        return DirectoryLoader(f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}", loader_cls=TextLoader)
 
     def ask_question(self, chat_id, question):
         ai_msg = self.rag_chain.invoke(
