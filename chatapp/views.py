@@ -12,7 +12,7 @@ RETURN_DATA = {
     "code": "Return javascript nashorn code only. Remove any leading text",
     "random": "",
     "autocomplete": "Return only the relevant code for autocomplete.",
-    "columns": 'Return only column mapping json object which contains srcColumnPath and etc inside "column" attribute. Add to this json one more attribute "action" with the value either add or delete depending on the question.',
+    "columns": "Return only column mapping json object which contains srcColumnPath and etc inside \"column\" attribute. Add to this json one more attribute \"action\" with the value either add or delete depending on the question. Return inside an array"
 }
 #Write a script for notices. Return only the relevant code for autocomplete.
 
