@@ -115,6 +115,9 @@ class MappingsInteractor:
         elif return_object == "script":
             resp = self.process_script_return(chat_id, result)
             logging.info(resp)
+            return Response(resp, status=status.HTTP_200_OK)      
+        elif return_object == "transformers":
+            resp = self.process_transformers(result)
             return Response(resp, status=status.HTTP_200_OK)
         #json response
         else:
@@ -163,4 +166,17 @@ class MappingsInteractor:
             logging.error("Invalid JSON response from processor: %s", e)
             raise
         return input_src_paths
+    
+    def process_transformers(self, result):
+         
+        template = {
+            "transformer": {
+                "type": "COMPOSITE",
+                "children": [
+                    {"type": "SINGLE", "transformerKey": result, "parameters": []}
+                ],
+            }
+        }
+        
+        return template
 
