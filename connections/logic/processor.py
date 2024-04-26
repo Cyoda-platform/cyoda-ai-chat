@@ -21,13 +21,13 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 WORK_DIR = os.environ["WORK_DIR"]
 CYODA_AI_REPO_URL = os.environ["CYODA_AI_REPO_URL"]
 CYODA_AI_REPO_BRANCH = os.environ["CYODA_AI_REPO_BRANCH"]
-CYODA_AI_CONFIG_GEN_MAPPINGS_PATH = os.environ["CYODA_AI_CONFIG_GEN_MAPPINGS_PATH"]+"mappings/"
+CYODA_AI_CONFIG_GEN_MAPPINGS_PATH = os.environ["CYODA_AI_CONFIG_GEN_MAPPINGS_PATH"]+"connections/"
 
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user question \
         which might reference context in the chat history, formulate a standalone question \
         which can be understood without the chat history. Do NOT answer the question, \
         just reformulate it if needed and otherwise return it as is."""
-QA_SYSTEM_PROMPT = """You are a mapping tool. You should do your best to answer the question.
+QA_SYSTEM_PROMPT = """You are a data source connection generation tool. You should do your best to answer the question.
         Use the following pieces of retrieved context to answer the question. \
 
         {context}"""
@@ -36,7 +36,7 @@ QA_SYSTEM_PROMPT = """You are a mapping tool. You should do your best to answer 
 logging.basicConfig(level=logging.INFO)
 
 
-class EDMProcessor:
+class ConnectionProcessor:
     def __init__(self):
         logging.info("Initializing...")
 
@@ -49,9 +49,9 @@ class EDMProcessor:
         self.llm = self.initialize_llm()
         loader = self.directory_loader()
         docs = loader.load()
-        scripting_docs = self.get_web_script_docs()
-        docs.extend(scripting_docs)
-        logging.info("Number of documents loaded: %s", len(docs))
+        #scripting_docs = self.get_web_script_docs()
+        #docs.extend(scripting_docs)
+        logging.info("Connections: Number of documents loaded: %s", len(docs))
 
         text_splitter = self.get_text_splitter()
         splits = text_splitter.split_documents(docs)
