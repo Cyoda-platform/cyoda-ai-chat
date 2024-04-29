@@ -21,13 +21,14 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 WORK_DIR = os.environ["WORK_DIR"]
 CYODA_AI_REPO_URL = os.environ["CYODA_AI_REPO_URL"]
 CYODA_AI_REPO_BRANCH = os.environ["CYODA_AI_REPO_BRANCH"]
-CYODA_AI_CONFIG_GEN_MAPPINGS_PATH = os.environ["CYODA_AI_CONFIG_GEN_MAPPINGS_PATH"]+"connections/"
+CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH = os.environ["CYODA_AI_CONFIG_GEN_MAPPINGS_PATH"]+"connections/"
 
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user question \
         which might reference context in the chat history, formulate a standalone question \
         which can be understood without the chat history. Do NOT answer the question, \
         just reformulate it if needed and otherwise return it as is."""
-QA_SYSTEM_PROMPT = """You are a data source connection generation tool. You should do your best to answer the question.
+QA_SYSTEM_PROMPT = """You are a data source connection generation tool. You should do your best to answer the question.\
+        You are aware of HttpEndpointDto.java object and data sources API. You should be able to map API docs to HttpEndpointDto.java object.
         Use the following pieces of retrieved context to answer the question. \
 
         {context}"""
@@ -49,8 +50,8 @@ class ConnectionProcessor:
         self.llm = self.initialize_llm()
         loader = self.directory_loader()
         docs = loader.load()
-        #scripting_docs = self.get_web_script_docs()
-        #docs.extend(scripting_docs)
+        web_docs = self.get_web_script_docs()
+        docs.extend(web_docs)
         logging.info("Connections: Number of documents loaded: %s", len(docs))
 
         text_splitter = self.get_text_splitter()
@@ -81,9 +82,9 @@ class ConnectionProcessor:
         logging.info("Initialization complete")
 
     def get_web_script_docs(self):
-        web_loader = WebBaseLoader(["https://docs.oracle.com/javase/8/docs/technotes/guides/scripting/prog_guide/javascript.html"])
-        scripting_docs = web_loader.load()
-        return scripting_docs
+        web_loader = WebBaseLoader(["https://tenders.guru/hu/api" ])
+        web_docs = web_loader.load()
+        return web_docs
 
     def initialize_llm(self):
         """Initializes the language model with the OpenAI API key."""
@@ -116,12 +117,12 @@ class ConnectionProcessor:
             repo_path=WORK_DIR,
             branch=CYODA_AI_REPO_BRANCH,
             file_filter=lambda file_path: file_path.startswith(
-                f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}"
+                f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH}"
             ),
         )
         
     def directory_loader(self):
-        return DirectoryLoader(f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}", loader_cls=TextLoader)
+        return DirectoryLoader(f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH}", loader_cls=TextLoader)
 
     def ask_question(self, chat_id, question):
         ai_msg = self.rag_chain.invoke(
