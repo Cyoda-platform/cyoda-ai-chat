@@ -43,7 +43,7 @@ class ConnectionsInteractor:
 
     def chat(self, chat_id, user_endpoint, return_object, question):
         # Initialize current_script and return_string
-        if chat_id not in initialized_requests:
+        if return_object == "endpoints" and chat_id not in initialized_requests:
             initialized_requests.add(chat_id)
             resp = self.initialize_connection_request(chat_id, question)
             return Response(resp, status=status.HTTP_200_OK)
