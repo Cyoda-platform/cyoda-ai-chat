@@ -110,7 +110,8 @@ class ConnectionsInteractor:
                 template["query"] = endpoint_result_json["query"]
                 template["method"] = endpoint_result_json["method"]
                 template["parameters"] = endpoint_result_json["parameters"]
-                template["bodyTemplate"] = endpoint_result_json["bodyTemplate"]
+                if "bodyTemplate" in endpoint_result_json and endpoint_result_json["bodyTemplate"] is not None:
+                    template["bodyTemplate"] = endpoint_result_json["bodyTemplate"]
                 template["connectionTimeout"] = endpoint_result_json[
                     "connectionTimeout"
                 ]
