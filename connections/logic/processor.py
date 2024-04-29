@@ -82,7 +82,7 @@ class ConnectionProcessor:
         logging.info("Initialization complete")
 
     def get_web_script_docs(self):
-        web_loader = WebBaseLoader(["https://tenders.guru/hu/api" ])
+        web_loader = WebBaseLoader(["https://tenders.guru/hu/api", "https://velocity.apache.org/tools/devel/tools-summary.html", "https://velocity.apache.org/engine/2.3/vtl-reference.html" ])
         web_docs = web_loader.load()
         return web_docs
 
@@ -90,7 +90,7 @@ class ConnectionProcessor:
         """Initializes the language model with the OpenAI API key."""
         llm = ChatOpenAI(
             temperature=0,
-            max_tokens=6000,
+            max_tokens=8000,
             model="gpt-3.5-turbo-16k",
             openai_api_key=OPENAI_API_KEY,
         )

@@ -30,9 +30,14 @@ class ConnectionsInteractor:
 
     def clear_context(self, chat_id):
         processor.chat_history.clear_chat_history(chat_id)
-        initialized_requests.remove(chat_id)
+        if chat_id in initialized_requests:
+            initialized_requests.remove(chat_id)
+            return Response(
+                {"message": f"Chat mapping with id {chat_id} cleared."},
+                status=status.HTTP_200_OK,
+            )
         return Response(
-            {"message": f"Chat mapping with id {chat_id} cleared."},
+            {"message": f"Chat mapping with id {chat_id} has not beed initialized yet."},
             status=status.HTTP_200_OK,
         )
 
@@ -77,21 +82,17 @@ class ConnectionsInteractor:
                 )
 
     def initialize_connection_request(self, chat_id, question):
-        init_request_question = (prompts.INITIAL_REQUEST_ANALYSIS_PROMPT).format(
-                question, question
-            )
+        init_request_question = (prompts.INITIAL_REQUEST_ANALYSIS_PROMPT).format(question)
         result = processor.ask_question(chat_id, init_request_question)
-        logging.info(result)
-        init_params_question = (prompts.INITIAL_PARAMETERS_ANALYSIS_PROMPT).format(
-                question
-            )
-        result = processor.ask_question(chat_id, init_params_question)
-        logging.info(result)
+        #logging.info(result)
+        #init_params_question = (prompts.INITIAL_PARAMETERS_ANALYSIS_PROMPT).format(question, question)
+        #result = processor.ask_question(chat_id, init_params_question)
+        #logging.info(result)
         init_question = (
-                (prompts.INITIAL_API_PROMPT).format(question)
-                + " "
-                + prompts.RETURN_DATA.get("endpoints")
-            )
+            (prompts.INITIAL_API_PROMPT).format(question)
+            + " "
+            + prompts.RETURN_DATA.get("endpoints")
+        )
         result = processor.ask_question(chat_id, init_question)
         resp = self.process_endpoint_result(chat_id, result)
         logging.info(resp)
@@ -106,16 +107,22 @@ class ConnectionsInteractor:
             ):
                 logging.info("operation included")
                 template = prompts.RESPONSE_TEMPLATE.copy()
-                template["operation"] = endpoint_result_json["operation"]
-                template["query"] = endpoint_result_json["query"]
-                template["method"] = endpoint_result_json["method"]
-                template["parameters"] = endpoint_result_json["parameters"]
-                if "bodyTemplate" in endpoint_result_json and endpoint_result_json["bodyTemplate"] is not None:
-                    template["bodyTemplate"] = endpoint_result_json["bodyTemplate"]
-                template["connectionTimeout"] = endpoint_result_json[
-                    "connectionTimeout"
+                keys_to_check = [
+                    "operation",
+                    "query",
+                    "parameters",
+                    "bodyTemplate",
+                    "connectionTimeout",
+                    "readWriteTimeout",
                 ]
-                template["readWriteTimeout"] = endpoint_result_json["readWriteTimeout"]
+                for key in keys_to_check:
+                    if (
+                        key in endpoint_result_json
+                        and endpoint_result_json[key] is not None
+                    ):
+                        template[key] = endpoint_result_json[key]
+                if "method" in endpoint_result_json and endpoint_result_json["method"] is not None:
+                    template["method"] = "POST_BODY" if endpoint_result_json["method"].startswith("POST") else "GET"
                 return template
             else:
                 return {"answer": endpoint_result_json}
