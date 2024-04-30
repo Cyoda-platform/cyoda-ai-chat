@@ -1,14 +1,20 @@
 RETURN_DATA = {
-    "mapping": "Return only json array of column mappings.",
-    "script": 'Return ONLY javascript nashorn "script" json object which contains body with javascript code and inputSrcPaths inside "script" attribute.. Remove any leading text',
+    "script": 'Return ONLY javascript nashorn "script" json object which contains body with javascript code and inputSrcPaths (remember p1/*/p2 template) inside "script" attribute. Remove any leading text',
     "code": "Return JavaScript Nashorn code only that can be used for code autocomplete. Remove any leading text. Return code only i.e. the contents of script body.",
     "random": "",
     "autocomplete": "Return only the relevant code for autocomplete. Do not return all code, just a few lines of code that answer the exact question - this is just autocomplete.",
-    "columns": 'Return only column mapping json object which contains srcColumnPath and etc inside "column" attribute. Add to this json one more attribute "action" with the value either add or delete depending on the question. Return inside an array',
+    "columns": 'Return only column mapping json object which contains srcColumnPath and etc inside "column" attribute. Add to this json one more attribute "action" with the value either add or delete depending on the question. Return inside an array. Remove any leading text',
     "transformers": "Return a relevant transformerKey for this column mapping from the list of available transformers. Return only transformerKey WITHOUT any other text.",
 }
 
-MAPPINGS_INITIAL_PROMPT = "Produce a list of column mappings from input to this target entity. Input: {}. Target Entity: {}. Do NOT add mappings for lists or arrays. If a column is not present in net.cyoda.saas.model.TenderEntity remove it. Use slash for src Return json array of column mappings."
+#MAPPINGS_INITIAL_PROMPT = "Produce a list of column mappings from input to this target entity. Input: {}. Target Entity: {}. Do NOT add mappings for lists or arrays. If a column is not present in net.cyoda.saas.model.TenderEntity remove it. Use slash for src Return json array of column mappings."
+
+
+MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}?"
+
+MAPPINGS_INITIAL_PROMPT_COLUMNS = "How to produce column mappings for a target entity? Which transformers would you use for Integer dst?"
+MAPPINGS_INITIAL_PROMPT_SCRIPT = "How to initialize Java objects according to the docs in javascript nashorn scripting? What are the cyoda rules of writing inputSrcPaths for arrays, e.g. should you use p1/*/p2 pattern? When should inputSrcPaths equal p1/* and when p1/*/p2?"
+
 
 RESPONSE_TEMPLATE = {
     "@bean": "com.cyoda.plugins.mapping.core.dtos.DataMappingConfigDto",

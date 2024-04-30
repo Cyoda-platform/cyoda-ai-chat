@@ -86,10 +86,10 @@ class ConnectionsInteractor:
     def initialize_connection_request(self, chat_id, question):
         init_request_question = (prompts.INITIAL_REQUEST_ANALYSIS_PROMPT).format(question)
         result = processor.ask_question(chat_id, init_request_question)
-        #logging.info(result)
-        #init_params_question = (prompts.INITIAL_PARAMETERS_ANALYSIS_PROMPT).format(question, question)
-        #result = processor.ask_question(chat_id, init_params_question)
-        #logging.info(result)
+        logging.info(result)
+        init_params_question = (prompts.INITIAL_PARAMETERS_ANALYSIS_PROMPT).format(question)
+        result = processor.ask_question(chat_id, init_params_question)
+        logging.info(result)
         init_question = (
             (prompts.INITIAL_API_PROMPT).format(question)
             + " "

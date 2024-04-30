@@ -2,8 +2,8 @@ RETURN_DATA = {
     "endpoints": "Return only resulting HttpEndpointDto json object. Remove any leading text. If you do not know something - just return empty json",
     "random": ""
 }
-INITIAL_REQUEST_ANALYSIS_PROMPT= "What is the structure of HttpEndpointDto.java object? Is {} a POST or GET request? What parameters does it have? What type of  HttpParameterDto.ParameterType enum do they correspond to? Why?"
-INITIAL_PARAMETERS_ANALYSIS_PROMPT="Is {} POST or GET request? What  HttpParameterDto.ParameterType enum values do you know? Which ones are used for POST or GET? What  HttpParameterDto.ParameterType enum value should we use for {}? Why?"
+INITIAL_REQUEST_ANALYSIS_PROMPT= "Is {} POST or GET request? What is the structure of HttpEndpointDto.java object? What is the structure of HttpParameterDto.ParameterType object?"
+INITIAL_PARAMETERS_ANALYSIS_PROMPT="What HttpParameterDto.ParameterType enum values do you know? Which ones are used for POST or GET? What  HttpParameterDto.ParameterType enum value should we use for {}? Why?"
 INITIAL_API_PROMPT="{}. Do your best to map the api to HttpEndpointDto.java object with a list of HttpParameterDto parameters included. Use HttpParameterDto.ParameterType that you have already decided to use if it is a correct choice."
 
 RESPONSE_TEMPLATE = {
@@ -23,4 +23,16 @@ RESPONSE_TEMPLATE = {
             "connectionTimeout": 300,
             "readWriteTimeout": 300
         }
+
+PARAMETER_TEMPLATE = {
+      "name": "", 
+      "defaultValue": "",
+      "secure": "false",
+      "required": "true",
+      "template": "false",
+      "templateValue": "",
+      "excludeFromCacheKey": "false",
+      "type": "REQUEST_PARAM",
+      "optionValues": []
+}
 

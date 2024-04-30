@@ -22,12 +22,6 @@ class InitialMappingView(views.APIView):
             response = interactor.initialize_mapping(initial_mapping_request.chat_id, initial_mapping_request.entity, initial_mapping_request.ds_input)
             return response
 
-class ScriptMappingView(views.APIView):
-    def get(self, request, *args, **kwargs):
-        chat_id = request.query_params.get("id", "")
-        return interactor.generate_script(chat_id)
-
-
 class ChatMappingClearView(views.APIView):
     def get(self, request, *args, **kwargs):
         chat_id = request.query_params.get("id", "")
