@@ -56,7 +56,7 @@ python3 manage.py runserver
 
 Once the application is running, you can interact with it using the following API endpoints:
 
-Mappings
+## Mappings
 
 ### Endpoint 1: Return Data
 
@@ -121,7 +121,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a
 ```
 
 
-Connections:
+## Connections:
 
 ### Endpoint 1: Return Data
 
@@ -145,10 +145,42 @@ curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a
 {"@bean":"com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto","chainings":[],"operation":"facts","cache":{"parameters":[],"ttl":0},"connectionIndex":0,"type":"test","query":"/facts","method":"GET","parameters":[],"bodyTemplate":"","connectionTimeout":300,"readWriteTimeout":300}
 ```
 
+## Prompts library
 
+List of topics: mappings, connections, workflows
+```
+GET /prompts/<topic>/<user>/: Returns all prompts for a user in a topic.
 
+GET /prompts/<topic>/<user>/<index>/: Returns a specific prompt for a user in a topic.
 
+POST /prompts/<topic>/<user>/: Adds a new prompt for a user in a topic.
 
+DELETE /prompts/<topic>/<user>/<index>/: Deletes a specific prompt for a user in a topic.
+```
+
+- Add a new prompt:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"prompt": "1"}' http://localhost:8000/api/v1/prompts/topic1/userA/
+```
+
+- Get all prompts for a user in a topic:
+
+```bash
+curl -X GET http://localhost:8000/api/v1/prompts/topic1/userA/
+```
+
+- Get a specific prompt for a user in a topic:
+
+```bash
+curl -X GET http://localhost:8000/api/v1/prompts/topic1/userA/0/
+```
+
+- Delete a specific prompt for a user in a topic:
+
+```bash
+curl -X DELETE http://localhost:8000/api/v1/prompts/topic1/userA/0/
+```
 
 
 ## Troubleshooting

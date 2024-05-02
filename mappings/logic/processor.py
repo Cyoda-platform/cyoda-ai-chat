@@ -5,7 +5,12 @@ from dotenv import load_dotenv
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.document_loaders import GitLoader, WebBaseLoader, DirectoryLoader, TextLoader
+from langchain_community.document_loaders import (
+    GitLoader,
+    WebBaseLoader,
+    DirectoryLoader,
+    TextLoader,
+)
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
@@ -21,7 +26,9 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 WORK_DIR = os.environ["WORK_DIR"]
 CYODA_AI_REPO_URL = os.environ["CYODA_AI_REPO_URL"]
 CYODA_AI_REPO_BRANCH = os.environ["CYODA_AI_REPO_BRANCH"]
-CYODA_AI_CONFIG_GEN_MAPPINGS_PATH = os.environ["CYODA_AI_CONFIG_GEN_MAPPINGS_PATH"]+"mappings/"
+CYODA_AI_CONFIG_GEN_MAPPINGS_PATH = (
+    os.environ["CYODA_AI_CONFIG_GEN_PATH"] + "/mappings/"
+)
 
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user question \
         which might reference context in the chat history, formulate a standalone question \
@@ -81,7 +88,11 @@ class EDMProcessor:
         logging.info("Initialization complete")
 
     def get_web_script_docs(self):
-        web_loader = WebBaseLoader(["https://docs.oracle.com/javase/8/docs/technotes/guides/scripting/prog_guide/javascript.html"])
+        web_loader = WebBaseLoader(
+            [
+                "https://docs.oracle.com/javase/8/docs/technotes/guides/scripting/prog_guide/javascript.html"
+            ]
+        )
         scripting_docs = web_loader.load()
         return scripting_docs
 
@@ -112,16 +123,18 @@ class EDMProcessor:
 
     def git_loader(self):
         return GitLoader(
-            #clone_url=CYODA_AI_REPO_URL,
+            # clone_url=CYODA_AI_REPO_URL,
             repo_path=WORK_DIR,
             branch=CYODA_AI_REPO_BRANCH,
             file_filter=lambda file_path: file_path.startswith(
                 f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}"
             ),
         )
-        
+
     def directory_loader(self):
-        return DirectoryLoader(f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}", loader_cls=TextLoader)
+        return DirectoryLoader(
+            f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}", loader_cls=TextLoader
+        )
 
     def ask_question(self, chat_id, question):
         ai_msg = self.rag_chain.invoke(

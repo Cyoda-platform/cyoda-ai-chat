@@ -6,10 +6,11 @@ from rest_framework.response import Response
 from rest_framework import status
 
 processor = EDMProcessor()
+
 logging.basicConfig(level=logging.INFO)
 
-initialized_columns=set()
-initialized_script =set()
+initialized_columns = set()
+initialized_script = set()
 
 class MappingsInteractor:
     def __init__(self):
