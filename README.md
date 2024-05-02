@@ -48,6 +48,7 @@ python3 manage.py migrate
 6. Start the Django development server:
 
 ```bash
+find . | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 python3 manage.py runserver
 ```
 
@@ -55,41 +56,34 @@ python3 manage.py runserver
 
 Once the application is running, you can interact with it using the following API endpoints:
 
+Mappings
+
 ### Endpoint 1: Return Data
 
 ```bash
-curl -X GET 'http://localhost:8000/api/return-data'
+curl -X GET 'http://localhost:8000/api/v1/mappings/return-data'
 ```
 
 ### Endpoint 2: Clear Chat Mapping
 
 ```bash
-curl -X GET 'http://localhost:8000/api/mappings-chat-clear?id=9bcfef68-fdfc-4468-a0a1-21b2804d560b'
+curl -X GET 'http://localhost:8000/api/v1/mappings/chat-clear?id=9bcfef68-fdfc-4468-a0a1-21b2804d560b'
 ```
 
 ### Endpoint 3: Initial Mapping
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "entity": "net.cyoda.saas.model.TenderEntity", "input":"{\"id\":\"1\",\"date\":\"2019-07-16\",\"deadline_date\":\"2019-07-25\",\"deadline_length_days\":\"9\",\"title\":\"SustitucindeduchasdelosbaosdelpasilloCyDdelaResidenciaJuvenilBaltasarGracian\",\"category\":\"constructions\",\"sid\":\"3996914\",\"src_url\":\"https\",\"src_final_url\":\"https\",\"awarded_value\":\"20252.00\",\"awarded_currency\":\"EUR\",\"purchaser\":{\"id\":\"1\",\"sid\":null,\"name\":null},\"type\":{\"id\":\"minor-contract\",\"name\":\"Minorcontract\",\"slug\":\"minor-contract\"},\"notices\":[{\"id\":null,\"sid\":null,\"date\":\"2019-08-30\",\"type\":{},\"src_id\":null,\"src_url\":null,\"data\":{\"date\":\"2019-08-30\",\"type\":\"AnunciodeAdjudicacin\"},\"sections\":[]},{\"id\":null,\"sid\":null,\"date\":\"2019-07-16\",\"type\":{},\"src_id\":null,\"src_url\":null,\"data\":{\"date\":\"2019-07-16\",\"type\":\"AnunciodeLicitacin\"},\"sections\":[]}],\"awarded\":[{\"date\":\"2019-08-07\",\"suppliers_id\":\"1\",\"count\":\"1\",\"value\":\"20252.00\",\"suppliers_name\":\"GESTIMAX,GestinyServicios,S.L.\",\"suppliers\":[{\"id\":\"1\",\"slug\":\"gestimax-gestion-y-servicios-s-l\",\"name\":\"GESTIMAX,GestinyServicios,S.L.\"}],\"offers_count\":2,\"offers_count_data\":{\"2\":{\"count\":1,\"value\":\"20252.00\"}},\"value_for_one\":0,\"value_for_two\":20252,\"value_for_three\":20252}]}"}' http://localhost:8000/api/mappings-initial
+curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "entity": "net.cyoda.saas.model.TenderEntity", "input":"{\"id\":\"1\",\"date\":\"2019-07-16\",\"deadline_date\":\"2019-07-25\",\"deadline_length_days\":\"9\",\"title\":\"SustitucindeduchasdelosbaosdelpasilloCyDdelaResidenciaJuvenilBaltasarGracian\",\"category\":\"constructions\",\"sid\":\"3996914\",\"src_url\":\"https\",\"src_final_url\":\"https\",\"awarded_value\":\"20252.00\",\"awarded_currency\":\"EUR\",\"purchaser\":{\"id\":\"1\",\"sid\":null,\"name\":null},\"type\":{\"id\":\"minor-contract\",\"name\":\"Minorcontract\",\"slug\":\"minor-contract\"},\"notices\":[{\"id\":null,\"sid\":null,\"date\":\"2019-08-30\",\"type\":{},\"src_id\":null,\"src_url\":null,\"data\":{\"date\":\"2019-08-30\",\"type\":\"AnunciodeAdjudicacin\"},\"sections\":[]},{\"id\":null,\"sid\":null,\"date\":\"2019-07-16\",\"type\":{},\"src_id\":null,\"src_url\":null,\"data\":{\"date\":\"2019-07-16\",\"type\":\"AnunciodeLicitacin\"},\"sections\":[]}],\"awarded\":[{\"date\":\"2019-08-07\",\"suppliers_id\":\"1\",\"count\":\"1\",\"value\":\"20252.00\",\"suppliers_name\":\"GESTIMAX,GestinyServicios,S.L.\",\"suppliers\":[{\"id\":\"1\",\"slug\":\"gestimax-gestion-y-servicios-s-l\",\"name\":\"GESTIMAX,GestinyServicios,S.L.\"}],\"offers_count\":2,\"offers_count_data\":{\"2\":{\"count\":1,\"value\":\"20252.00\"}},\"value_for_one\":0,\"value_for_two\":20252,\"value_for_three\":20252}]}"}' http://localhost:8000/api/v1/mappings/initial
 ```
 
 ```json
 {"@bean":"com.cyoda.plugins.mapping.core.dtos.DataMappingConfigDto","id":"c784c270-f0fe-11ee-9561-ee157423307a","name":"tender","lastUpdated":1712069164720,"dataType":"JSON","description":"","entityMappings":[{"id":{"id":"c77e59d0-f0fe-11ee-9561-ee157423307a"},"name":"tender","entityClass":"net.cyoda.saas.model.TenderEntity","entityRelationConfigs":[{"srcRelativeRootPath":"root:/"}],"columns":[{"srcColumnPath":"date","dstCyodaColumnPath":"date","dstCyodaColumnPathType":"java.lang.String","dstCollectionElementSetModes":[],"transformer":{"type":"COMPOSITE","children":[]}},{"srcColumnPath":"deadline_date","dstCyodaColumnPath":"deadlineDate","dstCyodaColumnPathType":"java.lang.String","dstCollectionElementSetModes":[],"transformer":{"type":"COMPOSITE","children":[]}},{"srcColumnPath":"deadline_length_days","dstCyodaColumnPath":"deadlineLengthDays","dstCyodaColumnPathType":"java.lang.Integer","dstCollectionElementSetModes":[],"transformer":{"type":"COMPOSITE","children":[]}},{"srcColumnPath":"title","dstCyodaColumnPath":"name","dstCyodaColumnPathType":"java.lang.String","dstCollectionElementSetModes":[],"transformer":{"type":"COMPOSITE","children":[]}},{"srcColumnPath":"category","dstCyodaColumnPath":"category","dstCyodaColumnPathType":"java.lang.String","dstCollectionElementSetModes":[],"transformer":{"type":"COMPOSITE","children":[]}},{"srcColumnPath":"awarded_value","dstCyodaColumnPath":"awardedValue","dstCyodaColumnPathType":"java.lang.Double","dstCollectionElementSetModes":[],"transformer":{"type":"COMPOSITE","children":[]}}]}]}
 ```
 
-### Endpoint 4: Get Script
-
-```bash
-curl -X GET 'http://localhost:8000/api/mappings-script?id=9bcfef68-fdfc-4468-a0a1-21b2804d560b'
-```
-
-```json
-{"body":"var entity = new net.cyoda.saas.model.TenderEntity();\n\n// Set attributes from input\nentity.setDate(input.date != null ? input.date : \"\");\nentity.setDeadlineDate(input.deadline_date != null ? input.deadline_date : \"\");\nentity.setDeadlineLengthDays(input.deadline_length_days != null ? input.deadline_length_days : 0);\nentity.setName(input.title != null ? input.title : \"\");\nentity.setCategory(input.category != null ? input.category : \"\");\nentity.setAwardedValue(input.awarded_value != null ? input.awarded_value : 0.0);\n\nreturn entity;","inputSrcPaths":["date","deadline_date","deadline_length_days","title","category","awarded_value"]}
-```
 ### Endpoint 5: AI Chat
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "how to write a loop in js", "return_object":"random"}' http://localhost:8000/api/mappings-ai-chat
+curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "how to write a loop in js", "return_object":"random"}' http://localhost:8000/api/v1/mappings/chat
 ```
 
 ```json
@@ -99,7 +93,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a
 ### Endpoint 6: Edit Code
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "Edit the script - if notices date is null the default date is 12-01-01. Do not return any comments just the code", "return_object":"code"}' http://localhost:8000/api/mappings-ai-chat
+curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "Edit the script - if notices date is null the default date is 12-01-01. Do not return any comments just the code", "return_object":"code"}' http://localhost:8000/api/v1/mappings/chat
 ```
 
 ```json
@@ -109,7 +103,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a
 ### Endpoint 7: Edit Script
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "Edit the script - if notices date is null the default date is 12-01-01.", "return_object":"script"}' http://localhost:8000/api/mappings-ai-chat
+curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "Edit the script - if notices date is null the default date is 12-01-01.", "return_object":"script"}' http://localhost:8000/api/v1/mappings/chat
 ```
 
 ```json
@@ -119,12 +113,43 @@ curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a
 ### Endpoint 8: Edit column mappings
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "Add column mapping for date", "return_object":"columns"}' http://localhost:8000/api/mappings-ai-chat
+curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "Add column mapping for date", "return_object":"columns"}' http://localhost:8000/api/v1/mappings/chat
 ```
 
 ```json
 {"column":{"srcColumnPath":"date","dstCyodaColumnPath":"date","dstCyodaColumnPathType":"java.lang.String","dstCollectionElementSetModes":[],"transformer":{"type":"COMPOSITE","children":[{"type":"SINGLE","transformerKey":"com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToString","parameters":[]},{"type":"SINGLE","transformerKey":"com.cyoda.plugins.mapping.core.parser.valuetransformers.StringValueTransformer$Trim","parameters":[]}]}},"action":"add"}
 ```
+
+
+Connections:
+
+### Endpoint 1: Return Data
+
+```bash
+curl -X GET 'http://localhost:8000/api/v1/connections/return-data'
+```
+
+
+### Endpoint 2: Clear Chat Mapping
+
+```bash
+curl -X GET 'http://localhost:8000/api/v1/connections/chat-clear?id=9bcfef68-fdfc-4468-a0a1-21b2804d560b'
+```
+### Endpoint 3: AI Chat
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"id":"9bcfef68-fdfc-4468-a0a1-21b2804d560b", "question": "write an endpoint for cats", "return_object":"endpoints"}' http://localhost:8000/api/v1/connections/chat
+```
+
+```json
+{"@bean":"com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto","chainings":[],"operation":"facts","cache":{"parameters":[],"ttl":0},"connectionIndex":0,"type":"test","query":"/facts","method":"GET","parameters":[],"bodyTemplate":"","connectionTimeout":300,"readWriteTimeout":300}
+```
+
+
+
+
+
+
 
 ## Troubleshooting
 
