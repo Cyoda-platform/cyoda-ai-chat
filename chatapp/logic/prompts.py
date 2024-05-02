@@ -15,36 +15,5 @@ MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure o
 MAPPINGS_INITIAL_PROMPT_COLUMNS = "How to produce column mappings for a target entity? Which transformers would you use for Integer dst?"
 MAPPINGS_INITIAL_PROMPT_SCRIPT = "How to initialize Java objects according to the docs in javascript nashorn scripting? What are the cyoda rules of writing inputSrcPaths for arrays, e.g. should you use p1/*/p2 pattern? When should inputSrcPaths equal p1/* and when p1/*/p2?"
 
-
-RESPONSE_TEMPLATE = {
-    "@bean": "com.cyoda.plugins.mapping.core.dtos.DataMappingConfigDto",
-    "id": "ef7bf900-00b3-11ef-b006-ba4744165259",
-    "name": "test",
-    "lastUpdated": 1713795828907,
-    "dataType": "JSON",
-    "description": "",
-    "entityMappings": [
-        {
-            "id": {"id": "ef79fd30-00b3-11ef-b006-ba4744165259"},
-            "name": "test",
-            "entityClass": "net.cyoda.saas.model.TenderEntity",
-            "entityRelationConfigs": [{"srcRelativeRootPath": "root:/"}],
-            "columns": [],  # Initialize the columns list
-            "functionalMappings": [],
-            "columnPathsForUniqueCheck": [],
-            "metadata": [],
-            "cobiCoreMetadata": [],
-            "script": {},
-            "entityFilter": {
-                "@bean": "com.cyoda.core.conditions.GroupCondition",
-                "operator": "AND",
-                "conditions": [],
-            },
-        }
-    ],
-}
-
-
-
 SCRIPT_GEN_PROMPT = "Write a JavaScript Nashorn script to map the given input to the given entity. Use the instruction. Return only JavaScript Nashorn script."
 SCRIPT_REFINE_PROMPT = "Provide a list of inputSrcPaths for this script. Write correct inputSrcPaths with a forward slash and wildcard if applicable. Return a json array."
