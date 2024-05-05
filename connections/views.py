@@ -28,6 +28,7 @@ This should be handled properly in a production environment.
 import logging
 from rest_framework import status, views
 from rest_framework.response import Response
+from django.core.exceptions import BadRequest, ObjectDoesNotExist
 from .logic.dto import InitialConnectionRequestDTO, ChatConnectionRequestDTO
 from .logic.serializers import InitialConnectionSerializer, ChatConnectionSerializer
 from .logic.interactor import ConnectionsInteractor
@@ -35,6 +36,7 @@ from .logic.prompts import RETURN_DATA
 
 logger = logging.getLogger(__name__)
 interactor = ConnectionsInteractor()
+ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
 
 class InitialConnectionView(views.APIView):
     """
@@ -49,10 +51,10 @@ class InitialConnectionView(views.APIView):
             initial_connection_request = InitialConnectionRequestDTO(**serializer.validated_data)
             try:
                 response = interactor.initialize_connection(
-                    initial_connection_request.chat_id,
+                    initial_connection_request.id,
                     initial_connection_request.ds_doc,
                 )
-                logger.info("Initial connection established for chat_id: %s", initial_connection_request.chat_id)
+                logger.info("Initial connection established for chat_id: %s", initial_connection_request.id)
                 return Response(response, status=status.HTTP_200_OK)
             except Exception as e:
                 logger.error("Error initializing connection: %s", e)
@@ -74,15 +76,21 @@ class ChatConnectionView(views.APIView):
             chat_connection_request = ChatConnectionRequestDTO(**serializer.validated_data)
             try:
                 response = interactor.chat(
-                    chat_connection_request.chat_id,
+                    chat_connection_request.id,
                     chat_connection_request.user_endpoint,
                     chat_connection_request.return_object,
                     chat_connection_request.question,
                 )
-                logger.info("Chat connection request processed for chat_id: %s", chat_connection_request.chat_id)
+                logger.info("Chat connection request processed for chat_id: %s", chat_connection_request.id)
                 return Response(response, status=status.HTTP_200_OK)
+            except BadRequest as e:
+                logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
+                return Response({"error": "Invalid input. Please check the request."}, status=status.HTTP_400_BAD_REQUEST)
+            except ObjectDoesNotExist as e:
+                logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
+                return Response({"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND)
             except Exception as e:
-                logger.error("Error processing chat connection request: %s", e)
+                logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
                 return Response({"error": "Failed to process chat connection request"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             logger.warning("Invalid data for chat connection request: %s", serializer.errors)

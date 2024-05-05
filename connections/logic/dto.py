@@ -1,13 +1,15 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 @dataclass
 class InitialConnectionRequestDTO:
-    chat_id: str
+    id: str
     ds_doc: str
 
 @dataclass
 class ChatConnectionRequestDTO:
-    chat_id: str
-    user_endpoint: str
+    id: str
     return_object: str
     question: str
+    user_endpoint: Optional[str] = field(default=None)
+

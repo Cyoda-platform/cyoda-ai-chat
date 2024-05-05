@@ -1,11 +1,7 @@
 import json
 import logging
-from django.http import (
-    JsonResponse,
-    HttpResponseServerError,
-    HttpResponseBadRequest,
-    HttpResponseNotFound,
-)
+from django.core.exceptions import BadRequest, ObjectDoesNotExist
+from rest_framework.exceptions import APIException
 from . import prompts
 from .processor import ConnectionProcessor
 
@@ -21,36 +17,18 @@ class ConnectionsInteractor:
 
     def initialize_connection(self, chat_id, ds_doc):
         if not chat_id or not ds_doc:
-            return HttpResponseBadRequest(
-                json.dumps(
-                    {"error": "Invalid input. chat_id and ds_doc are required."}
-                ),
-                content_type="application/json",
-            )
+            raise BadRequest("Invalid input. chat_id and ds_doc are required.")
         try:
             # todo
-            return JsonResponse(
-                {"message": "Connection initialized successfully."}, status=200
-            )
+            return {"message": "Connection initialized successfully."}
         except Exception as e:
-            logger.error("An error occurred while initializing the connection: %s", e)
-            return HttpResponseServerError(
-                json.dumps(
-                    {
-                        "error": "An error occurred while initializing the connection.",
-                        "details": str(e),
-                    }
-                ),
-                content_type="application/json",
-            )
+            logger.error("An error occurred while initializing the connection: %s", e, exc_info=True)
+            raise APIException("An error occurred while initializing the connection.", e)
 
     def clear_context(self, chat_id):
         # Validate input
         if not chat_id:
-            return HttpResponseBadRequest(
-                json.dumps({"error": "Invalid input. chat_id is required."}),
-                content_type="application/json",
-            )
+            raise BadRequest("Invalid input. chat_id is required.")
 
         try:
             # Clear chat history
@@ -59,47 +37,29 @@ class ConnectionsInteractor:
             # Remove chat_id from initialized_requests if it exists
             if chat_id in initialized_requests:
                 initialized_requests.remove(chat_id)
-                return JsonResponse(
-                    {"message": f"Chat context with id {chat_id} cleared."}, status=200
-                )
+                return {"message": f"Chat context with id {chat_id} cleared."}
             else:
-                return HttpResponseNotFound(
-                    json.dumps(
-                        {"error": f"Chat context with id {chat_id} was not found."}
-                    ),
-                    content_type="application/json",
+                raise ObjectDoesNotExist(
+                    f"Chat context with id {chat_id} was not found."
                 )
         except Exception as e:
-            logger.error("An error occurred while clearing the context: %s", e)
-            return HttpResponseServerError(
-                json.dumps(
-                    {
-                        "error": "An error occurred while clearing the context.",
-                        "details": str(e),
-                    }
-                ),
-                content_type="application/json",
-            )
+            logger.error("An error occurred while clearing the context: %s", e, exc_info=True)
+            raise APIException("An error occurred while clearing the context.", e)
 
     def chat(self, chat_id, user_endpoint, return_object, question):
         # Validate input
-        if not all([chat_id, user_endpoint, return_object, question]):
-            return HttpResponseBadRequest(
-                json.dumps({"error": "Invalid input. All parameters are required."}),
-                content_type="application/json",
-            )
+        if not all([chat_id, return_object, question]):
+            raise BadRequest("Invalid input. All parameters are required.")
 
         try:
             # Initialize current_script and return_string
             if chat_id not in initialized_requests:
                 if return_object != "endpoints":
-                    return JsonResponse(
-                        {"answer": "Please, initialize the endpoints request first."},
-                        status=200,
-                    )
+                    return {"answer": "Please, initialize the endpoints request first."}
+
                 initialized_requests.add(chat_id)
                 resp = self.initialize_connection_request(chat_id, question)
-                return JsonResponse(resp, status=200)
+                return resp
 
             # Construct ai_question
             current_endpoint = (
@@ -110,68 +70,48 @@ class ConnectionsInteractor:
 
             # Ask question to processor
             result = processor.ask_question(chat_id, ai_question)
-
             # Handle different return_objects
-            return self.handle_return_object(return_object, chat_id, result)
+            resp = self.handle_return_object(return_object, chat_id, result)
+            return resp
+
         except Exception as e:
-            logger.error("An error occurred while processing the chat: %s", e)
-            return HttpResponseServerError(
-                json.dumps(
-                    {
-                        "error": "An error occurred while processing the chat.",
-                        "details": str(e),
-                    }
-                ),
-                content_type="application/json",
-            )
+            logger.error("An error occurred while processing the chat: %s", e, exc_info=True)
+            raise APIException("An error occurred while processing the chat.", e)
 
     def handle_return_object(self, return_object, chat_id, result):
         if return_object == "random":
-            return JsonResponse({"answer": result}, status=200)
+            return {"answer": result}
         elif return_object == "endpoints":
-            return JsonResponse(
-                self.process_endpoint_result(chat_id, result), status=200
-            )
+            return self.process_endpoint_result(chat_id, result)
         else:
             try:
                 result_dict = json.loads(result)
-                return JsonResponse(result_dict, status=200)
+                return result_dict
             except json.JSONDecodeError as e:
-                logger.error("Invalid JSON response from processor: %s", e)
-                return JsonResponse(
-                    {
-                        "error": "Invalid JSON response from processor",
-                        "details": str(e),
-                    },
-                    status=500,
-                )
+                logger.error("Invalid JSON response from processor: %s", e, exc_info=True)
+                return {
+                    "error": "Invalid JSON response from processor",
+                    "details": str(e),
+                }
 
     def initialize_connection_request(self, chat_id, question):
         # Validate input
         if not all([chat_id, question]):
-            return HttpResponseBadRequest(
-                json.dumps(
-                    {"error": "Invalid input. chat_id and question are required."}
-                ),
-                content_type="application/json",
-            )
+            raise BadRequest("Invalid input. chat_id and question are required.")
 
         try:
             # Ask questions to the processor and handle the responses
-            init_request_question = (prompts.INITIAL_REQUEST_ANALYSIS_PROMPT).format(
-                question
-            )
-            init_request_result = self.ask_processor_question(
-                chat_id, init_request_question
-            )
-            logger.info(init_request_result)
-            init_params_question = (prompts.INITIAL_PARAMETERS_ANALYSIS_PROMPT).format(
-                question
-            )
-            init_params_result = self.ask_processor_question(
-                chat_id, init_params_question
-            )
-            logger.info(init_params_result)
+            prompts_list = [
+                (prompts.INITIAL_API_ANALYSIS_PROMPT),
+                (prompts.INITIAL_REQUEST_ANALYSIS_PROMPT),
+                #(prompts.INITIAL_PARAMETERS_ANALYSIS_PROMPT)
+            ]
+
+            for prompt in prompts_list:
+                question_formatted = prompt.format(question)
+                result = self.ask_processor_question(chat_id, question_formatted)
+                logger.info(result)
+                
             init_question = (
                 (prompts.INITIAL_API_PROMPT).format(question)
                 + " "
@@ -181,20 +121,12 @@ class ConnectionsInteractor:
 
             # Process the endpoint result
             resp = self.process_endpoint_result(chat_id, init_endpoints_result)
-            return JsonResponse(resp, status=200)
+            return resp
         except Exception as e:
             logger.error(
-                "An error occurred while initializing the connection request: %s", e
-            )
-            return HttpResponseServerError(
-                json.dumps(
-                    {
-                        "error": "An error occurred while initializing the connection request.",
-                        "details": str(e),
-                    }
-                ),
-                content_type="application/json",
-            )
+                "An error occurred while initializing the connection request: %s", e, exc_info=True)
+            raise APIException(
+                "An error occurred while initializing the connection request.", e)
 
     def ask_processor_question(self, chat_id, question):
         try:
@@ -202,19 +134,13 @@ class ConnectionsInteractor:
             return result
         except Exception as e:
             logger.error(
-                "An error occurred while asking the processor a question: %s", e
-            )
+                "An error occurred while asking the processor a question: %s", e, exc_info=True)
             raise
 
     def process_endpoint_result(self, chat_id, script_result):
         # Validate input
         if not all([chat_id, script_result]):
-            return HttpResponseBadRequest(
-                json.dumps(
-                    {"error": "Invalid input. chat_id and script_result are required."}
-                ),
-                content_type="application/json",
-            )
+            raise BadRequest("Invalid input. chat_id and script_result are required.")
 
         try:
             # Parse the JSON response
@@ -230,30 +156,14 @@ class ConnectionsInteractor:
                 template = self.populate_endpoint_template(
                     endpoint_result_json, template
                 )
-                return JsonResponse(template, status=200)
+                return template
             else:
-                return JsonResponse({"answer": endpoint_result_json}, status=200)
+                return {"answer": endpoint_result_json}
         except json.JSONDecodeError as e:
-            logger.error("Invalid JSON response from processor: %s", e)
-            return HttpResponseServerError(
-                json.dumps(
-                    {"error": "Invalid JSON response from processor", "details": str(e)}
-                ),
-                content_type="application/json",
-            )
+            raise APIException("Invalid JSON response from processor", e)
         except Exception as e:
-            logger.error(
-                "An error occurred while processing the endpoint result: %s", e
-            )
-            return HttpResponseServerError(
-                json.dumps(
-                    {
-                        "error": "An error occurred while processing the endpoint result.",
-                        "details": str(e),
-                    }
-                ),
-                content_type="application/json",
-            )
+            raise APIException(
+                "An error occurred while processing the endpoint result.", e)
 
     def create_endpoint_template(self, endpoint_result_json):
         # Create a template with default values
@@ -315,10 +225,8 @@ class ConnectionsInteractor:
                     "defaultValue": "",
                     "secure": "false",
                     "required": "true",
-                    "template": "false",
-                    "templateValue": "",
                     "excludeFromCacheKey": "false",
-                    "type": "REQUEST_PARAM",
+                    "type": "",
                     "optionValues": [],
                 }
                 for key in param_keys_to_check:
@@ -335,20 +243,41 @@ class ConnectionsInteractor:
         return template
 
     def process_endpoint_param(self, template, res_param, param_template):
-        # Validate input
+    # Validate input
         if any(arg is None for arg in [template, res_param, param_template]):
             raise ValueError("Template, res_param, and param_template cannot be None")
 
         try:
             # Process the parameter based on the method type
-            if template["method"] == "POST_BODY":
-                param_template["type"] = "REQUEST_BODY_VARIABLE"
-            elif template["method"] == "GET":
-                if "in" in res_param and res_param["in"] is not None:
-                    param_template["type"] = res_param["in"]
-                else:
-                    param_template["type"] = "REQUEST_PARAM"
+            param_template["type"] = self.process_method_type(template, param_template)
+            param_template["templateValue"] = self.process_template_value(res_param)
+            param_template["template"] = "true" if param_template["templateValue"] else "false"
             return param_template
         except Exception as e:
-            logger.error("An error occurred while processing endpoint parameter: %s", e)
+            logger.error("An error occurred while processing endpoint parameter: %s", e, exc_info=True)
             raise
+        
+    def process_template_value(self, res_param):
+        if res_param["templateValue"]:
+            return res_param["templateValue"]
+        elif res_param["template"] is not None and str(res_param["template"]).startswith("$"):
+            return res_param["template"]
+        return None
+
+    def process_method_type(self, template, param_template):
+        if template["method"] == "POST_BODY":
+            return "REQUEST_BODY_VARIABLE"
+        elif template["method"] == "GET":
+            return self.process_get_method(template, param_template)
+
+    def process_get_method(self, template, param_template):
+        param_placeholder_name = f"{{{param_template['name']}}}"
+        if 'query' in template and param_placeholder_name in template['query']:
+            # Check if the value associated with the key does not start with $
+            path_placeholder = f"${param_placeholder_name}"
+            if path_placeholder not in template['query']:
+                logger.info(template['query'])
+                template['query'] = template['query'].replace(param_placeholder_name, path_placeholder)
+            return "PATH_VARIABLE"
+        else:
+            return "REQUEST_PARAM"

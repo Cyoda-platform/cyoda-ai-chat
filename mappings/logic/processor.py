@@ -33,7 +33,7 @@ class MappingProcessor:
 
         Sets up the language model, RAG chain, and chat history service.
         """
-        self.llm = processor.initialize_llm()
+        self.llm = processor.initialize_llm(temperature=0, max_tokens=6000, model = "gpt-3.5-turbo-16k")
         web_docs = self.get_web_script_docs()
         self.rag_chain = processor.process_rag_chain(
             self.llm, QA_SYSTEM_PROMPT, CYODA_AI_CONFIG_GEN_MAPPINGS_PATH, web_docs

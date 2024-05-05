@@ -1,17 +1,17 @@
 import json
 import logging
-from rest_framework.response import Response
-from rest_framework import status
 from . import prompts
 from .processor import MappingProcessor
+from rest_framework.exceptions import APIException
 
 # Initialize the processor and set the logging level
 processor = MappingProcessor()
 logging.basicConfig(level=logging.INFO)
 
-# Sets to keep track of initialized script and columns
+# Sets to keep track of initialized script and columns, not thread-safe - will be replaced later
 initialized_columns = set()
 initialized_script = set()
+initialized_mappings = set()
 
 class MappingsInteractor:
     """
@@ -33,7 +33,8 @@ class MappingsInteractor:
         :param entity: The entity to initialize the mapping for.
         :return: A Response indicating the result of the initialization.
         """
-        return self._initialize(chat_id, initialized_columns, prompts.MAPPINGS_INITIAL_PROMPT, entity)
+        question = prompts.MAPPINGS_INITIAL_PROMPT.format(ds_input, entity, ds_input)
+        return self._initialize(chat_id, initialized_mappings, question)
 
     def initialize_script(self, chat_id):
         """
@@ -42,7 +43,7 @@ class MappingsInteractor:
         :param chat_id: The ID of the chat session.
         :return: A Response indicating the result of the initialization.
         """
-        return self._initialize(chat_id, initialized_script, prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT, "script")
+        return self._initialize(chat_id, initialized_script, prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT)
 
     def initialize_columns(self, chat_id):
         """
@@ -51,28 +52,28 @@ class MappingsInteractor:
         :param chat_id: The ID of the chat session.
         :return: A Response indicating the result of the initialization.
         """
-        return self._initialize(chat_id, initialized_columns, prompts.MAPPINGS_INITIAL_PROMPT_COLUMNS, "columns")
+        return self._initialize(
+            chat_id, initialized_columns, prompts.MAPPINGS_INITIAL_PROMPT_COLUMNS
+        )
 
-    def _initialize(self, chat_id, initialized_set, prompt, entity):
+    def _initialize(self, chat_id, initialized_set, question):
         """
         A private method that initializes a resource for the given chat ID.
 
         :param chat_id: The ID of the chat session.
         :param initialized_set: The set to track the initialized resources.
-        :param prompt: The prompt to ask the question.
-        :param entity: The entity to initialize.
+        :param question: The prompt to ask the question.
         :return: A Response indicating the result of the initialization.
         """
         if chat_id not in initialized_set:
             try:
-                question = prompt.format(entity) if callable(prompt) else prompt
                 result = processor.ask_question(chat_id, question)
                 logging.info(result)
                 initialized_set.add(chat_id)
-                return Response({"answer": f"{entity} initialization complete"}, status=status.HTTP_200_OK)
+                return {"answer": f"{chat_id} initialization complete"}
             except Exception as e:
-                logging.error("An error occurred during initialization: %s", e)
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                logging.error("An error occurred during initialization: %s", e, exc_info=True)
+                return {"error": str(e)}
 
     def chat(self, chat_id, user_script, return_object, question):
         self.initialize_return_object(chat_id, return_object)
@@ -86,8 +87,8 @@ class MappingsInteractor:
     def initialize_return_object(self, chat_id, return_object):
         if return_object == "script":
             self.initialize_script(chat_id)
-        #elif return_object == "columns":
-        #self.initialize_columns(chat_id)
+        # elif return_object == "columns":
+        # self.initialize_columns(chat_id)
 
     def process_return_object(self, chat_id, return_object, result):
         response_data = {}
@@ -101,35 +102,31 @@ class MappingsInteractor:
             try:
                 response_data = json.loads(result)
             except json.JSONDecodeError as e:
-                logging.error("Invalid JSON response from processor %s", e)
-                return Response(
-                    {"error": "Invalid JSON response from processor", "details": str(e)},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+                raise APIException("Invalid JSON response from processor", e, exc_info=True)
+
         else:
-            return Response(
-                {"error": "Invalid return object"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        return Response(response_data, status=status.HTTP_200_OK)
+            raise APIException("Invalid return object")
+        return response_data
 
     def process_script_return(self, chat_id, script_result):
         try:
             script_result_json = json.loads(script_result)
-            if "script" in script_result_json and script_result_json["script"] is not None:
+            if (
+                "script" in script_result_json
+                and script_result_json["script"] is not None
+            ):
                 logging.info("Script included in response")
                 return script_result_json
             else:
                 input_src_paths = self.get_input_scr_params(chat_id)
-                script = {"script": {"body": script_result, "inputSrcPaths": input_src_paths}}
+                script = {
+                    "script": {"body": script_result, "inputSrcPaths": input_src_paths}
+                }
                 return script
         except json.JSONDecodeError as e:
-            logging.error("Invalid JSON response from processor: %s", e)
+            logging.error("Invalid JSON response from processor: %s", e, exc_info=True)
             # Handle JSON decoding error appropriately
-            return Response(
-                {"error": "Invalid JSON response from processor", "details": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            raise APIException("Invalid JSON response from processor", e)
 
     def get_input_scr_params(self, chat_id):
         refine_question = prompts.SCRIPT_REFINE_PROMPT
@@ -138,12 +135,9 @@ class MappingsInteractor:
         try:
             input_src_paths = json.loads(refine_result)
         except json.JSONDecodeError as e:
-            logging.error("Invalid JSON response from processor: %s", e)
+            logging.error("Invalid JSON response from processor: %s", e, exc_info=True)
             # Handle JSON decoding error appropriately
-            return Response(
-                {"error": "Invalid JSON response from processor", "details": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            raise APIException("Invalid JSON response from processor", e)
         return input_src_paths
 
     def process_transformers(self, result):
@@ -157,8 +151,6 @@ class MappingsInteractor:
         }
         return template
 
-
-
     def clear_context(self, chat_id):
         """
         Clears the context for the given chat ID.
@@ -167,12 +159,10 @@ class MappingsInteractor:
         :return: A Response indicating the result of the context clearing.
         """
         processor.chat_history.clear_chat_history(chat_id)
-        self._remove_from_set(chat_id, initialized_columns)
-        self._remove_from_set(chat_id, initialized_script)
-        return Response(
-            {"message": f"Chat mapping with id {chat_id} cleared."},
-            status=status.HTTP_200_OK,
-        )
+        items_to_remove = [initialized_columns, initialized_script, initialized_mappings]
+        for item in items_to_remove:
+            self._remove_from_set(chat_id, item)
+        return {"message": f"Chat mapping with id {chat_id} cleared."}
 
     def _remove_from_set(self, chat_id, initialized_set):
         """
@@ -183,5 +173,3 @@ class MappingsInteractor:
         """
         if chat_id in initialized_set:
             initialized_set.remove(chat_id)
-
-    

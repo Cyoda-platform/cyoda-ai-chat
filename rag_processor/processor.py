@@ -37,7 +37,7 @@ CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user ques
         just reformulate it if needed and otherwise return it as is."""
 
 # Initialize logging
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class RagProcessor:
@@ -87,12 +87,12 @@ class RagProcessor:
         web_docs = web_loader.load()
         return web_docs
 
-    def initialize_llm(self):
+    def initialize_llm(self, temperature, max_tokens, model):
         """Initializes the language model with the OpenAI API key."""
         llm = ChatOpenAI(
-            temperature=0,
-            max_tokens=8000,
-            model="gpt-3.5-turbo-16k",
+            temperature=temperature,
+            max_tokens=max_tokens,
+            model=model,
             openai_api_key=OPENAI_API_KEY,
         )
         return llm
@@ -113,6 +113,7 @@ class RagProcessor:
         return RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
     def git_loader(self, path: str) -> GitLoader:
+        logger.info("Using remote documents")
         return GitLoader(
             repo_path=GIT_WORK_DIR,
             branch=CYODA_AI_REPO_BRANCH,
@@ -123,6 +124,7 @@ class RagProcessor:
         )
 
     def directory_loader(self, path: str) -> DirectoryLoader:
+        logger.info("Using local documents")
         return DirectoryLoader(
             f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_PATH}/{path}", loader_cls=TextLoader
         )
