@@ -40,6 +40,9 @@ docker run -p 31179:8000 chat_app
 ```
 
 5. Apply database migrations:
+```bash
+find . | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
+```
 
 ```bash
 python3 manage.py migrate
@@ -48,7 +51,6 @@ python3 manage.py migrate
 6. Start the Django development server:
 
 ```bash
-find . | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 python3 manage.py runserver
 ```
 

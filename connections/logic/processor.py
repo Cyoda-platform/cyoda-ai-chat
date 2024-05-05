@@ -1,151 +1,71 @@
-import os
-import sys
 import logging
-from dotenv import load_dotenv
+from rag_processor.processor import RagProcessor
+from rag_processor.chat_history import ChatHistoryService
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.document_loaders import (
-    GitLoader,
-    WebBaseLoader,
-    DirectoryLoader,
-    TextLoader,
-)
-from langchain_community.vectorstores import Chroma
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-
-from .chat_history import ChatHistoryService
-
-# Load environment variables
-load_dotenv()
-
-# Constants
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-WORK_DIR = os.environ["WORK_DIR"]
-CYODA_AI_REPO_URL = os.environ["CYODA_AI_REPO_URL"]
-CYODA_AI_REPO_BRANCH = os.environ["CYODA_AI_REPO_BRANCH"]
-CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH = (
-    os.environ["CYODA_AI_CONFIG_GEN_PATH"] + "/connections/"
-)
-
-CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user question \
-        which might reference context in the chat history, formulate a standalone question \
-        which can be understood without the chat history. Do NOT answer the question, \
-        just reformulate it if needed and otherwise return it as is."""
-QA_SYSTEM_PROMPT = """You are a data source connection generation tool. You should do your best to answer the question.\
+CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH = "connections/"
+QA_SYSTEM_PROMPT = """You are a data source connection generation tool. You should do your best to answer the question.
         You are aware of HttpEndpointDto.java object and data sources API. You should be able to map API docs to HttpEndpointDto.java object.
-        Use the following pieces of retrieved context to answer the question. \
+        Use the following pieces of retrieved context to answer the question.
 
         {context}"""
 
-# Initialize logging
 logging.basicConfig(level=logging.INFO)
+processor = RagProcessor()
+#not tread safe - will be replaced in the future
+connections_chat_history = {}
 
 
 class ConnectionProcessor:
+    """
+    A class to process connections and ask questions related to data source generation.
+
+    Attributes:
+        llm (LanguageModel): The language model used for processing.
+        web_docs (list): A list of web documents used for context in the RAG chain.
+        rag_chain (RagChain): The RAG chain used for processing questions.
+        chat_history (ChatHistoryService): The service for managing chat history.
+
+    Methods:
+        __init__(): Initializes the ConnectionProcessor instance.
+        get_web_script_docs(): Retrieves web documents for context.
+        ask_question(chat_id, question): Asks a question using the RAG chain and returns the answer.
+    """
+
     def __init__(self):
-        logging.info("Initializing...")
-
-        # Use pysqlite3 for SQLite if it's available
-        try:
-            __import__("pysqlite3")
-            sys.modules["sqlite3"] = sys.modules["pysqlite3"]
-        except ImportError:
-            pass
-        self.llm = self.initialize_llm()
-        loader = self.directory_loader()
-        docs = loader.load()
-        web_docs = self.get_web_script_docs()
-        docs.extend(web_docs)
-        logging.info("Connections: Number of documents loaded: %s", len(docs))
-
-        text_splitter = self.get_text_splitter()
-        splits = text_splitter.split_documents(docs)
-        vectorstore = self.get_vector_store(splits)
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
-        count = vectorstore._collection.count()
-        logging.info("Number of documents in vectorestore: %s", count)
-
-        contextualize_q_prompt = self.get_prompt_template()
-        history_aware_retriever = create_history_aware_retriever(
-            self.llm, retriever, contextualize_q_prompt
+        """
+        Initializes the ConnectionProcessor instance.
+        """
+        self.llm = processor.initialize_llm()
+        self.web_docs = self.get_web_script_docs()
+        self.rag_chain = processor.process_rag_chain(
+            self.llm, QA_SYSTEM_PROMPT, CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH, self.web_docs
         )
-
-        qa_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", QA_SYSTEM_PROMPT),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-        question_answer_chain = create_stuff_documents_chain(self.llm, qa_prompt)
-        self.rag_chain = create_retrieval_chain(
-            history_aware_retriever, question_answer_chain
-        )
-        self.chat_history = ChatHistoryService()
-
-        logging.info("Initialization complete")
+        self.chat_history = ChatHistoryService(connections_chat_history)
 
     def get_web_script_docs(self):
-        web_loader = WebBaseLoader(
-            [
-                "https://velocity.apache.org/tools/devel/tools-summary.html",
-                "https://velocity.apache.org/engine/2.3/vtl-reference.html",
-            ]
-        )
-        web_docs = web_loader.load()
+        """
+        Retrieves web documents for context.
+
+        Returns:
+            list: A list of web documents.
+        """
+        urls = [
+            "https://velocity.apache.org/tools/devel/tools-summary.html",
+            "https://velocity.apache.org/engine/2.3/vtl-reference.html",
+        ]
+        web_docs = processor.get_web_docs(urls)
         return web_docs
 
-    def initialize_llm(self):
-        """Initializes the language model with the OpenAI API key."""
-        llm = ChatOpenAI(
-            temperature=0,
-            max_tokens=8000,
-            model="gpt-3.5-turbo-16k",
-            openai_api_key=OPENAI_API_KEY,
-        )
-        return llm
-
-    def get_prompt_template(self):
-        return ChatPromptTemplate.from_messages(
-            [
-                ("system", CONTEXTUALIZE_Q_SYSTEM_PROMPT),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-    def get_vector_store(self, splits):
-        return Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
-
-    def get_text_splitter(self):
-        return RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-
-    def git_loader(self):
-        return GitLoader(
-            # clone_url=CYODA_AI_REPO_URL,
-            repo_path=WORK_DIR,
-            branch=CYODA_AI_REPO_BRANCH,
-            file_filter=lambda file_path: file_path.startswith(
-                f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH}"
-            ),
-        )
-
-    def directory_loader(self):
-        return DirectoryLoader(
-            f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH}", loader_cls=TextLoader
-        )
-
     def ask_question(self, chat_id, question):
-        ai_msg = self.rag_chain.invoke(
-            {
-                "input": question,
-                "chat_history": self.chat_history.get_chat_history(chat_id),
-            }
-        )
+        """
+        Asks a question using the RAG chain and returns the answer.
 
-        self.chat_history.add_to_chat_history(chat_id, question, ai_msg["answer"])
-        logging.info(ai_msg["answer"])
-        return ai_msg["answer"]
+        Args:
+            chat_id (str): The ID of the chat session.
+            question (str): The question to ask.
+
+        Returns:
+            str: The answer to the question.
+        """
+        answer = processor.ask_question(chat_id, question, self.chat_history, self.rag_chain)
+        return answer

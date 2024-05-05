@@ -1,12 +1,16 @@
+from dataclasses import dataclass
+
+@dataclass
 class InitialMappingRequestDTO:
-    def __init__(self, chat_id, entity, ds_input):
-        self.chat_id = chat_id
-        self.entity = entity
-        self.ds_input = ds_input
-        
+    """Data Transfer Object for initial mapping request."""
+    chat_id: str
+    entity: str
+    ds_input: str
+
+@dataclass
 class ChatMappingRequestDTO:
-    def __init__(self, chat_id, question, user_script, return_object):
-        self.chat_id = chat_id
-        self.question = question
-        self.user_script = user_script
-        self.return_object = return_object
+    """Data Transfer Object for chat mapping request."""
+    chat_id: str
+    question: str
+    user_script: str
+    return_object: str

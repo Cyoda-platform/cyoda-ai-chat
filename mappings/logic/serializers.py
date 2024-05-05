@@ -1,10 +1,15 @@
 from rest_framework import serializers
 
-class MessageSerializer(serializers.Serializer):
-    id = serializers.CharField(required=False)
-    question = serializers.CharField(required=False)
-    entity = serializers.CharField(required=False)
-    input = serializers.CharField(required=False)
-    return_object = serializers.CharField(required=False)
-    user_script = serializers.CharField(required=False)
-    content = serializers.CharField(required=False)  # Make this field optional
+# Custom serializers
+class InitialMappingSerializer(serializers.Serializer):
+    """Serializer for the initial mapping data."""
+    id = serializers.CharField(max_length=255)
+    entity = serializers.CharField(max_length=255)
+    input = serializers.CharField(max_length=255)
+
+class ChatMappingSerializer(serializers.Serializer):
+    """Serializer for the chat mapping data."""
+    id = serializers.CharField(max_length=255)
+    question = serializers.CharField(max_length=255)
+    user_script = serializers.CharField(max_length=255)
+    return_object = serializers.CharField(max_length=255)
