@@ -56,6 +56,28 @@ class MappingsInteractor:
             chat_id, initialized_columns, prompts.MAPPINGS_INITIAL_PROMPT_COLUMNS
         )
 
+    def chat(self, chat_id, user_script, return_object, question):
+        self._initialize_return_object(chat_id, return_object)
+        current_script = f"Current script: {user_script}." if user_script else ""
+        return_string = prompts.RETURN_DATA.get(return_object, "")
+        ai_question = f"{question}. {current_script} {return_string}"
+        logging.info(f"Asking question: {ai_question}")
+        result = processor.ask_question(chat_id, ai_question)
+        return self._process_return_object(chat_id, return_object, result)
+    
+    def clear_context(self, chat_id):
+        """
+        Clears the context for the given chat ID.
+
+        :param chat_id: The ID of the chat session.
+        :return: A Response indicating the result of the context clearing.
+        """
+        processor.chat_history.clear_chat_history(chat_id)
+        items_to_remove = [initialized_columns, initialized_script, initialized_mappings]
+        for item in items_to_remove:
+            self._remove_from_set(chat_id, item)
+        return {"message": f"Chat mapping with id {chat_id} cleared."}
+    
     def _initialize(self, chat_id, initialized_set, question):
         """
         A private method that initializes a resource for the given chat ID.
@@ -75,29 +97,20 @@ class MappingsInteractor:
                 logging.error("An error occurred during initialization: %s", e, exc_info=True)
                 return {"error": str(e)}
 
-    def chat(self, chat_id, user_script, return_object, question):
-        self.initialize_return_object(chat_id, return_object)
-        current_script = f"Current script: {user_script}." if user_script else ""
-        return_string = prompts.RETURN_DATA.get(return_object, "")
-        ai_question = f"{question}. {current_script} {return_string}"
-        logging.info(f"Asking question: {ai_question}")
-        result = processor.ask_question(chat_id, ai_question)
-        return self.process_return_object(chat_id, return_object, result)
-
-    def initialize_return_object(self, chat_id, return_object):
+    def _initialize_return_object(self, chat_id, return_object):
         if return_object == "script":
             self.initialize_script(chat_id)
         # elif return_object == "columns":
         # self.initialize_columns(chat_id)
 
-    def process_return_object(self, chat_id, return_object, result):
+    def _process_return_object(self, chat_id, return_object, result):
         response_data = {}
         if return_object in ["random", "code", "autocomplete"]:
             response_data = {"answer": result}
         elif return_object == "script":
-            response_data = self.process_script_return(chat_id, result)
+            response_data = self._process_script_return(chat_id, result)
         elif return_object == "transformers":
-            response_data = self.process_transformers(result)
+            response_data = self._process_transformers(result)
         elif return_object == "columns":
             try:
                 response_data = json.loads(result)
@@ -108,7 +121,7 @@ class MappingsInteractor:
             raise APIException("Invalid return object")
         return response_data
 
-    def process_script_return(self, chat_id, script_result):
+    def _process_script_return(self, chat_id, script_result):
         try:
             script_result_json = json.loads(script_result)
             if (
@@ -118,7 +131,7 @@ class MappingsInteractor:
                 logging.info("Script included in response")
                 return script_result_json
             else:
-                input_src_paths = self.get_input_scr_params(chat_id)
+                input_src_paths = self._get_input_scr_params(chat_id)
                 script = {
                     "script": {"body": script_result, "inputSrcPaths": input_src_paths}
                 }
@@ -128,7 +141,7 @@ class MappingsInteractor:
             # Handle JSON decoding error appropriately
             raise APIException("Invalid JSON response from processor", e)
 
-    def get_input_scr_params(self, chat_id):
+    def _get_input_scr_params(self, chat_id):
         refine_question = prompts.SCRIPT_REFINE_PROMPT
         refine_result = processor.ask_question(chat_id, refine_question)
         logging.info(f"Refined question: {refine_result}")
@@ -140,7 +153,7 @@ class MappingsInteractor:
             raise APIException("Invalid JSON response from processor", e)
         return input_src_paths
 
-    def process_transformers(self, result):
+    def _process_transformers(self, result):
         template = {
             "transformer": {
                 "type": "COMPOSITE",
@@ -150,19 +163,6 @@ class MappingsInteractor:
             }
         }
         return template
-
-    def clear_context(self, chat_id):
-        """
-        Clears the context for the given chat ID.
-
-        :param chat_id: The ID of the chat session.
-        :return: A Response indicating the result of the context clearing.
-        """
-        processor.chat_history.clear_chat_history(chat_id)
-        items_to_remove = [initialized_columns, initialized_script, initialized_mappings]
-        for item in items_to_remove:
-            self._remove_from_set(chat_id, item)
-        return {"message": f"Chat mapping with id {chat_id} cleared."}
 
     def _remove_from_set(self, chat_id, initialized_set):
         """

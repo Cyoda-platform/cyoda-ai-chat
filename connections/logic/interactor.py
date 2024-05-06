@@ -58,7 +58,7 @@ class ConnectionsInteractor:
                     return {"answer": "Please, initialize the endpoints request first."}
 
                 initialized_requests.add(chat_id)
-                resp = self.initialize_connection_request(chat_id, question)
+                resp = self._initialize_connection_request(chat_id, question)
                 return resp
 
             # Construct ai_question
@@ -71,18 +71,18 @@ class ConnectionsInteractor:
             # Ask question to processor
             result = processor.ask_question(chat_id, ai_question)
             # Handle different return_objects
-            resp = self.handle_return_object(return_object, chat_id, result)
+            resp = self._handle_return_object(return_object, chat_id, result)
             return resp
 
         except Exception as e:
             logger.error("An error occurred while processing the chat: %s", e, exc_info=True)
             raise APIException("An error occurred while processing the chat.", e)
 
-    def handle_return_object(self, return_object, chat_id, result):
+    def _handle_return_object(self, return_object, chat_id, result):
         if return_object == "random":
             return {"answer": result}
         elif return_object == "endpoints":
-            return self.process_endpoint_result(chat_id, result)
+            return self._process_endpoint_result(chat_id, result)
         else:
             try:
                 result_dict = json.loads(result)
@@ -94,7 +94,7 @@ class ConnectionsInteractor:
                     "details": str(e),
                 }
 
-    def initialize_connection_request(self, chat_id, question):
+    def _initialize_connection_request(self, chat_id, question):
         # Validate input
         if not all([chat_id, question]):
             raise BadRequest("Invalid input. chat_id and question are required.")
@@ -109,7 +109,7 @@ class ConnectionsInteractor:
 
             for prompt in prompts_list:
                 question_formatted = prompt.format(question)
-                result = self.ask_processor_question(chat_id, question_formatted)
+                result = self._ask_processor_question(chat_id, question_formatted)
                 logger.info(result)
                 
             init_question = (
@@ -117,10 +117,10 @@ class ConnectionsInteractor:
                 + " "
                 + prompts.RETURN_DATA.get("endpoints")
             )
-            init_endpoints_result = self.ask_processor_question(chat_id, init_question)
+            init_endpoints_result = self._ask_processor_question(chat_id, init_question)
 
             # Process the endpoint result
-            resp = self.process_endpoint_result(chat_id, init_endpoints_result)
+            resp = self._process_endpoint_result(chat_id, init_endpoints_result)
             return resp
         except Exception as e:
             logger.error(
@@ -128,7 +128,7 @@ class ConnectionsInteractor:
             raise APIException(
                 "An error occurred while initializing the connection request.", e)
 
-    def ask_processor_question(self, chat_id, question):
+    def _ask_processor_question(self, chat_id, question):
         try:
             result = processor.ask_question(chat_id, question)
             return result
@@ -137,7 +137,7 @@ class ConnectionsInteractor:
                 "An error occurred while asking the processor a question: %s", e, exc_info=True)
             raise
 
-    def process_endpoint_result(self, chat_id, script_result):
+    def _process_endpoint_result(self, chat_id, script_result):
         # Validate input
         if not all([chat_id, script_result]):
             raise BadRequest("Invalid input. chat_id and script_result are required.")
@@ -152,8 +152,8 @@ class ConnectionsInteractor:
                 and endpoint_result_json["operation"] is not None
             ):
                 # Process the endpoint result
-                template = self.create_endpoint_template(endpoint_result_json)
-                template = self.populate_endpoint_template(
+                template = self._create_endpoint_template(endpoint_result_json)
+                template = self._populate_endpoint_template(
                     endpoint_result_json, template
                 )
                 return template
@@ -165,7 +165,7 @@ class ConnectionsInteractor:
             raise APIException(
                 "An error occurred while processing the endpoint result.", e)
 
-    def create_endpoint_template(self, endpoint_result_json):
+    def _create_endpoint_template(self, endpoint_result_json):
         # Create a template with default values
         template = {
             "@bean": "com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto",
@@ -202,7 +202,7 @@ class ConnectionsInteractor:
             )
         return template
 
-    def populate_endpoint_template(self, endpoint_result_json, template):
+    def _populate_endpoint_template(self, endpoint_result_json, template):
         if (
             "parameters" in endpoint_result_json
             and endpoint_result_json["parameters"] is not None
@@ -232,7 +232,7 @@ class ConnectionsInteractor:
                 for key in param_keys_to_check:
                     if key in res_param and res_param[key] is not None:
                         param_template[key] = res_param[key]
-                param_template = self.process_endpoint_param(
+                param_template = self._process_endpoint_param(
                     template, res_param, param_template
                 )
                 logger.info("parameters==")
@@ -242,35 +242,35 @@ class ConnectionsInteractor:
         logger.info(template)
         return template
 
-    def process_endpoint_param(self, template, res_param, param_template):
+    def _process_endpoint_param(self, template, res_param, param_template):
     # Validate input
         if any(arg is None for arg in [template, res_param, param_template]):
             raise ValueError("Template, res_param, and param_template cannot be None")
 
         try:
             # Process the parameter based on the method type
-            param_template["type"] = self.process_method_type(template, param_template)
-            param_template["templateValue"] = self.process_template_value(res_param)
+            param_template["type"] = self._process_method_type(template, param_template)
+            param_template["templateValue"] = self._process_template_value(res_param)
             param_template["template"] = "true" if param_template["templateValue"] else "false"
             return param_template
         except Exception as e:
             logger.error("An error occurred while processing endpoint parameter: %s", e, exc_info=True)
             raise
         
-    def process_template_value(self, res_param):
+    def _process_template_value(self, res_param):
         if res_param["templateValue"]:
             return res_param["templateValue"]
         elif res_param["template"] is not None and str(res_param["template"]).startswith("$"):
             return res_param["template"]
         return None
 
-    def process_method_type(self, template, param_template):
+    def _process_method_type(self, template, param_template):
         if template["method"] == "POST_BODY":
             return "REQUEST_BODY_VARIABLE"
         elif template["method"] == "GET":
-            return self.process_get_method(template, param_template)
+            return self._process_get_method(template, param_template)
 
-    def process_get_method(self, template, param_template):
+    def _process_get_method(self, template, param_template):
         param_placeholder_name = f"{{{param_template['name']}}}"
         if 'query' in template and param_placeholder_name in template['query']:
             # Check if the value associated with the key does not start with $

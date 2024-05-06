@@ -52,19 +52,19 @@ class RagProcessor:
         except ImportError:
             pass
         
-        loader = self.directory_loader(path) if LOCAL else self.git_loader(path)
+        loader = self._directory_loader(path) if os.getenv("LOCAL", "false").lower() == "true" else self._git_loader(path)
         docs = loader.load()
         docs.extend(config_docs)
         logging.info("Number of documents loaded: %s", len(docs))
 
-        text_splitter = self.get_text_splitter()
+        text_splitter = self._get_text_splitter()
         splits = text_splitter.split_documents(docs)
-        vectorstore = self.get_vector_store(splits)
+        vectorstore = self._get_vector_store(splits)
         retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
         count = vectorstore._collection.count()
         logging.info("Number of documents in vectorstore: %s", count)
 
-        contextualize_q_prompt = self.get_prompt_template()
+        contextualize_q_prompt = self._get_prompt_template()
         history_aware_retriever = create_history_aware_retriever(
             llm, retriever, contextualize_q_prompt
         )
@@ -96,39 +96,7 @@ class RagProcessor:
             openai_api_key=OPENAI_API_KEY,
         )
         return llm
-
-    def get_prompt_template(self):
-        return ChatPromptTemplate.from_messages(
-            [
-                ("system", CONTEXTUALIZE_Q_SYSTEM_PROMPT),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-    def get_vector_store(self, splits: List[Dict]) -> Chroma:
-        return Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
-
-    def get_text_splitter(self):
-        return RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-
-    def git_loader(self, path: str) -> GitLoader:
-        logger.info("Using remote documents")
-        return GitLoader(
-            repo_path=GIT_WORK_DIR,
-            branch=CYODA_AI_REPO_BRANCH,
-            clone_url=CYODA_AI_REPO_URL,
-            file_filter=lambda file_path: file_path.startswith(
-                f"{GIT_WORK_DIR}/{CYODA_AI_CONFIG_GEN_PATH}/{path}"
-            ),
-        )
-
-    def directory_loader(self, path: str) -> DirectoryLoader:
-        logger.info("Using local documents")
-        return DirectoryLoader(
-            f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_PATH}/{path}", loader_cls=TextLoader
-        )
-
+    
     def ask_question(self, chat_id: str, question: str, chat_history: ChatHistoryService, rag_chain) -> str:
         ai_msg = rag_chain.invoke(
             {
@@ -140,3 +108,35 @@ class RagProcessor:
         chat_history.add_to_chat_history(chat_id, question, ai_msg["answer"])
         logging.info(ai_msg["answer"])
         return ai_msg["answer"]
+
+    def _get_prompt_template(self):
+        return ChatPromptTemplate.from_messages(
+            [
+                ("system", CONTEXTUALIZE_Q_SYSTEM_PROMPT),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+
+    def _get_vector_store(self, splits: List[Dict]) -> Chroma:
+        return Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
+
+    def _get_text_splitter(self):
+        return RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+
+    def _git_loader(self, path: str) -> GitLoader:
+        logger.info("Using remote documents")
+        return GitLoader(
+            repo_path=GIT_WORK_DIR,
+            branch=CYODA_AI_REPO_BRANCH,
+            clone_url=CYODA_AI_REPO_URL,
+            file_filter=lambda file_path: file_path.startswith(
+                f"{GIT_WORK_DIR}/{CYODA_AI_CONFIG_GEN_PATH}/{path}"
+            ),
+        )
+
+    def _directory_loader(self, path: str) -> DirectoryLoader:
+        logger.info("Using local documents")
+        return DirectoryLoader(
+            f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_PATH}/{path}", loader_cls=TextLoader
+        )

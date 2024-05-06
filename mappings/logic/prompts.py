@@ -10,7 +10,9 @@ RETURN_DATA = {
 #MAPPINGS_INITIAL_PROMPT = "Produce a list of column mappings from input to this target entity. Input: {}. Target Entity: {}. Do NOT add mappings for lists or arrays. If a column is not present in net.cyoda.saas.model.TenderEntity remove it. Use slash for src Return json array of column mappings."
 
 
-MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}?"
+MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}? What are the input attributes?"
+MAPPINGS_INITIAL_RELATIONS_PROMPT = "How do does input correspond to the entity? Which attributes can be mapped from the input to the entity. Return json array in the form of [src_json_path:dst_json_path]. Use your common knowledge and semantic analysis."
+
 
 MAPPINGS_INITIAL_PROMPT_COLUMNS = "How to produce column mappings for a target entity? Which transformers would you use for Integer dst?"
 MAPPINGS_INITIAL_PROMPT_SCRIPT = "How to initialize Java objects according to the docs in javascript nashorn scripting? What are the cyoda rules of writing inputSrcPaths for arrays, e.g. should you use p1/*/p2 pattern? When should inputSrcPaths equal p1/* and when p1/*/p2?"
