@@ -11,5 +11,5 @@ INITIAL_API_PROMPT="{}. Do your best to map the api to HttpEndpointDto.java obje
 COLLECTIONS_DEFAULT_PROMPTS=[
     "Write a curl request for this endpoint. Use parameters placeholders in the body, e.g. \"parameter_name\": \"${name}\"",
     "API: {}, endpoint: {}",
-    "Add a request parameter date which is a velocity function to calculate current date"
+    "Add a request parameter \"date\". It should be a template parameter with a templateValue = velocity function to calculate current date."
 ]
