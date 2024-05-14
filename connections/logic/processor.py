@@ -35,7 +35,9 @@ class ConnectionProcessor:
         """
         Initializes the ConnectionProcessor instance.
         """
-        self.llm = processor.initialize_llm(temperature=0, max_tokens=4000, model = "gpt-3.5-turbo-16k")
+        #gpt-3.5-turbo-16k	
+        #gpt-4
+        self.llm = processor.initialize_llm(temperature=0.85, max_tokens=4000, model = "gpt-4", openai_api_base=None)
         self.web_docs = self.get_web_script_docs()
         self.rag_chain = processor.process_rag_chain(
             self.llm, QA_SYSTEM_PROMPT, CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH, self.web_docs

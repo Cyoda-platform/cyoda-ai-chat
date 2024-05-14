@@ -3,6 +3,7 @@ import logging
 from . import prompts
 from .processor import MappingProcessor
 from rest_framework.exceptions import APIException
+from common_utils.utils import parse_json
 
 # Initialize the processor and set the logging level
 processor = MappingProcessor()
@@ -63,11 +64,13 @@ class MappingsInteractor:
 
     def chat(self, chat_id, user_script, return_object, question):
         self._initialize_return_object(chat_id, return_object)
-        current_script = f"Current script: {user_script}." if user_script else ""
+        current_script = f"Current script: {user_script}." if user_script and return_object != "autocomplete" else ""
         logger.info(f"Current script: {user_script}")
         return_string = prompts.RETURN_DATA.get(return_object, "")
         ai_question = f"{question}. {current_script} {return_string}"
         logger.info(f"Asking question: {ai_question}")
+        if return_object == "transformers":
+            return self._process_transformers(question)
         result = processor.ask_question(chat_id, ai_question)
         return self._process_return_object(chat_id, return_object, result)
     
@@ -130,6 +133,7 @@ class MappingsInteractor:
 
     def _process_script_return(self, chat_id, script_result):
         try:
+            script_result = parse_json(script_result)
             script_result_json = json.loads(script_result)
             if (
                 "script" in script_result_json
@@ -160,7 +164,8 @@ class MappingsInteractor:
             raise APIException("Invalid JSON response from processor", e)
         return input_src_paths
 
-    def _process_transformers(self, result):
+    def _process_transformers(self, question):
+        result = self._extract_date_info(question)
         template = {
             "transformer": {
                 "type": "COMPOSITE",
@@ -169,7 +174,7 @@ class MappingsInteractor:
                 ],
             }
         }
-        return template
+        return template if result else None
 
     def _remove_from_set(self, chat_id, initialized_set):
         """
@@ -180,3 +185,24 @@ class MappingsInteractor:
         """
         if chat_id in initialized_set:
             initialized_set.remove(chat_id)
+            
+    def _extract_date_info(self, question):
+        data = json.loads(question)
+        dst_path_type = data.get('dstCyodaColumnPathType', '')
+
+        if dst_path_type == "java.lang.Integer":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToInt"
+        elif dst_path_type == "java.lang.ToBoolean":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToBoolean"
+        elif dst_path_type == "java.lang.Float":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToFloat"
+        elif dst_path_type == "java.lang.Long":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToLong"
+        elif dst_path_type == "java.lang.Byte":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToByte"
+        elif dst_path_type == "java.lang.Short":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToShort"
+        elif dst_path_type == "package java.math.BigDecimal":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToBigDecimal"
+        elif dst_path_type == "java.lang.Double":
+            return "com.cyoda.plugins.mapping.core.parser.valuetransformers.SourceObjectValueTransformer$ToDouble"

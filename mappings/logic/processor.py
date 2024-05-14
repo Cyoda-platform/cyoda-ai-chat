@@ -33,7 +33,8 @@ class MappingProcessor:
 
         Sets up the language model, RAG chain, and chat history service.
         """
-        self.llm = processor.initialize_llm(temperature=0, max_tokens=6000, model = "gpt-3.5-turbo-16k")
+        self.llm = processor.initialize_llm(temperature=0.85, max_tokens=4000, model = "deepseek-chat", openai_api_base='https://api.deepseek.com/v1')
+        #self.llm = processor.initialize_llm(temperature=0.85, max_tokens=4000, model = "gpt-4-1106-vision-preview", openai_api_base=None)
         web_docs = self.get_web_script_docs()
         self.rag_chain = processor.process_rag_chain(
             self.llm, QA_SYSTEM_PROMPT, CYODA_AI_CONFIG_GEN_MAPPINGS_PATH, web_docs

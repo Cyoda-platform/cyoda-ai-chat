@@ -19,11 +19,9 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 
 from .chat_history import ChatHistoryService
 
-# Load environment variables
-load_dotenv()
-
 # Constants
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 WORK_DIR = os.getenv("WORK_DIR")
 GIT_WORK_DIR = os.getenv("GIT_WORK_DIR")
 CYODA_AI_CONFIG_GEN_PATH = os.getenv("CYODA_AI_CONFIG_GEN_PATH")
@@ -44,15 +42,21 @@ class RagProcessor:
     def __init__(self):
         logging.info("Initializing RagProcessor...")
 
-    def process_rag_chain(self, llm, qa_system_prompt: str, path: str, config_docs: List[Dict]) -> None:
+    def process_rag_chain(
+        self, llm, qa_system_prompt: str, path: str, config_docs: List[Dict]
+    ) -> None:
         # Use pysqlite3 for SQLite if it's available
         try:
             __import__("pysqlite3")
             sys.modules["sqlite3"] = sys.modules["pysqlite3"]
         except ImportError:
             pass
-        
-        loader = self._directory_loader(path) if os.getenv("LOCAL", "false").lower() == "true" else self._git_loader(path)
+
+        loader = (
+            self._directory_loader(path)
+            if os.getenv("LOCAL", "false").lower() == "true"
+            else self._git_loader(path)
+        )
         docs = loader.load()
         docs.extend(config_docs)
         logging.info("Number of documents loaded: %s", len(docs))
@@ -87,17 +91,22 @@ class RagProcessor:
         web_docs = web_loader.load()
         return web_docs
 
-    def initialize_llm(self, temperature, max_tokens, model):
+    def initialize_llm(self, temperature, max_tokens, model, openai_api_base):
         """Initializes the language model with the OpenAI API key."""
         llm = ChatOpenAI(
+            model=model,
+            openai_api_key=(
+                DEEPSEEK_API_KEY if model.startswith("deepseek") else OPENAI_API_KEY
+            ),
+            openai_api_base=openai_api_base,
             temperature=temperature,
             max_tokens=max_tokens,
-            model=model,
-            openai_api_key=OPENAI_API_KEY,
         )
         return llm
-    
-    def ask_question(self, chat_id: str, question: str, chat_history: ChatHistoryService, rag_chain) -> str:
+
+    def ask_question(
+        self, chat_id: str, question: str, chat_history: ChatHistoryService, rag_chain
+    ) -> str:
         ai_msg = rag_chain.invoke(
             {
                 "input": question,

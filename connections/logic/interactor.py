@@ -4,6 +4,7 @@ from django.core.exceptions import BadRequest, ObjectDoesNotExist
 from rest_framework.exceptions import APIException
 from . import prompts
 from .processor import ConnectionProcessor
+from common_utils.utils import parse_json
 
 logger = logging.getLogger(__name__)
 processor = ConnectionProcessor()
@@ -27,9 +28,6 @@ class ConnectionsInteractor:
 
     def clear_context(self, chat_id):
         # Validate input
-        if not chat_id:
-            raise BadRequest("Invalid input. chat_id is required.")
-
         try:
             # Clear chat history
             processor.chat_history.clear_chat_history(chat_id)
@@ -38,10 +36,6 @@ class ConnectionsInteractor:
             if chat_id in initialized_requests:
                 initialized_requests.remove(chat_id)
                 return {"message": f"Chat context with id {chat_id} cleared."}
-            else:
-                raise ObjectDoesNotExist(
-                    f"Chat context with id {chat_id} was not found."
-                )
         except Exception as e:
             logger.error("An error occurred while clearing the context: %s", e, exc_info=True)
             raise APIException("An error occurred while clearing the context.", e)
@@ -71,18 +65,20 @@ class ConnectionsInteractor:
             # Ask question to processor
             result = processor.ask_question(chat_id, ai_question)
             # Handle different return_objects
-            resp = self._handle_return_object(return_object, chat_id, result)
+            resp = self._handle_return_object(return_object, result)
             return resp
 
         except Exception as e:
             logger.error("An error occurred while processing the chat: %s", e, exc_info=True)
             raise APIException("An error occurred while processing the chat.", e)
 
-    def _handle_return_object(self, return_object, chat_id, result):
+    def _handle_return_object(self, return_object, result):
         if return_object == "random":
             return {"answer": result}
         elif return_object == "endpoints":
-            return self._process_endpoint_result(chat_id, result)
+            return self._process_endpoint_result(result)
+        elif return_object == "parameters":
+            return self._process_parameters_result(result)
         else:
             try:
                 result_dict = json.loads(result)
@@ -120,7 +116,7 @@ class ConnectionsInteractor:
             init_endpoints_result = self._ask_processor_question(chat_id, init_question)
 
             # Process the endpoint result
-            resp = self._process_endpoint_result(chat_id, init_endpoints_result)
+            resp = self._process_endpoint_result(init_endpoints_result)
             return resp
         except Exception as e:
             logger.error(
@@ -136,13 +132,24 @@ class ConnectionsInteractor:
             logger.error(
                 "An error occurred while asking the processor a question: %s", e, exc_info=True)
             raise
-
-    def _process_endpoint_result(self, chat_id, script_result):
-        # Validate input
-        if not all([chat_id, script_result]):
-            raise BadRequest("Invalid input. chat_id and script_result are required.")
-
+        
+    def _process_parameters_result(self, script_result):               
         try:
+            script_result = parse_json(script_result)
+            # Parse the JSON response
+            parameters_result_json = json.loads(script_result)
+            logger.info(parameters_result_json)
+            result = self.process_template_parameters(template=None, res_params=parameters_result_json)
+            return result
+        except json.JSONDecodeError as e:
+            raise APIException("Invalid JSON response from processor", e)
+        except Exception as e:
+            raise APIException(
+                "An error occurred while processing the endpoint result.", e)
+
+    def _process_endpoint_result(self, script_result):               
+        try:
+            script_result = parse_json(script_result)
             # Parse the JSON response
             endpoint_result_json = json.loads(script_result)
 
@@ -208,7 +215,16 @@ class ConnectionsInteractor:
             and endpoint_result_json["parameters"] is not None
         ):
             res_params = endpoint_result_json["parameters"]
-            param_keys_to_check = [
+            
+            template_parameters = self.process_template_parameters(template, res_params)
+            template["parameters"] = template_parameters      
+        logger.info("template==")
+        logger.info(template)
+        return template
+
+    def process_template_parameters(self, template, res_params):
+        template_parameters = []
+        param_keys_to_check = [
                 "name",
                 "defaultValue",
                 "secure",
@@ -219,8 +235,8 @@ class ConnectionsInteractor:
                 "type",
                 "optionValues",
             ]
-            for res_param in res_params:
-                param_template = {
+        for res_param in res_params:
+            param_template = {
                     "name": "",
                     "defaultValue": "",
                     "secure": "false",
@@ -229,27 +245,26 @@ class ConnectionsInteractor:
                     "type": "",
                     "optionValues": [],
                 }
-                for key in param_keys_to_check:
-                    if key in res_param and res_param[key] is not None:
-                        param_template[key] = res_param[key]
-                param_template = self._process_endpoint_param(
+            for key in param_keys_to_check:
+                if key in res_param and res_param[key] is not None:
+                    param_template[key] = res_param[key]
+            param_template = self._process_endpoint_param(
                     template, res_param, param_template
                 )
-                logger.info("parameters==")
-                logger.info(param_template)
-                template["parameters"].append(param_template)
-        logger.info("template==")
-        logger.info(template)
-        return template
+            logger.info("parameters==")
+            logger.info(param_template)
+            template_parameters.append(param_template)
+        return template_parameters    
 
     def _process_endpoint_param(self, template, res_param, param_template):
     # Validate input
-        if any(arg is None for arg in [template, res_param, param_template]):
-            raise ValueError("Template, res_param, and param_template cannot be None")
+        if any(arg is None for arg in [res_param, param_template]):
+            raise ValueError("Res_param, and param_template cannot be None")
 
         try:
             # Process the parameter based on the method type
-            param_template["type"] = self._process_method_type(template, param_template)
+            if (template is not None):
+                param_template["type"] = self._process_method_type(template, param_template)
             param_template["templateValue"] = self._process_template_value(res_param)
             param_template["template"] = "true" if param_template["templateValue"] else "false"
             return param_template
@@ -258,9 +273,9 @@ class ConnectionsInteractor:
             raise
         
     def _process_template_value(self, res_param):
-        if res_param["templateValue"]:
+        if "templateValue" in res_param:
             return res_param["templateValue"]
-        elif res_param["template"] is not None and str(res_param["template"]).startswith("$"):
+        elif "template" in res_param and str(res_param["template"]).startswith("$"):
             return res_param["template"]
         return None
 
