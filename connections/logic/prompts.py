@@ -1,6 +1,6 @@
 RETURN_DATA = {
     "endpoints": "Return only resulting HttpEndpointDto json object. Remove any leading text. If you do not know something - just return empty json.",
-    "parameters": "Return only resulting HttpParameterDto json array. Remove any leading text. If you do not know something - just return empty json.",
+    "parameters": "Return only resulting HttpParameterDto-s. Include only parameters asked for, not all parameters. Remove any leading text. If you do not know something - just return empty json.",
     "random": ""
 }
 

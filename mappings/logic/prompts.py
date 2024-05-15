@@ -20,4 +20,5 @@ MAPPINGS_INITIAL_PROMPT_SCRIPT = "How to initialize Java objects according to th
 SCRIPT_GEN_PROMPT = "Write a JavaScript Nashorn script to map the given input to the given entity. Use the instruction. Return only JavaScript Nashorn script."
 SCRIPT_REFINE_PROMPT = "Provide a list of inputSrcPaths for this script. Write correct inputSrcPaths with a forward slash and wildcard if applicable. Return a json array."
 
-MAPPINGS_DEFAULT_PROMPTS=["analyze the script and add all missing inputSrcPaths (they should be available for all input attributes used in the script)"]
+MAPPINGS_DEFAULT_PROMPTS=["analyze the script and add all missing inputSrcPaths (they should be available for all input attributes used in the script). Use slash \"/\" for the jsonpath.",
+                          "write a script to map the input to the entity."]
