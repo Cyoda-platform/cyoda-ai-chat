@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 class RagProcessor:
     def __init__(self):
-        logging.info("Initializing RagProcessor...")
+        logging.info("Initializing RagProcessor v1...")
 
     def process_rag_chain(
         self, llm, qa_system_prompt: str, path: str, config_docs: List[Dict]
