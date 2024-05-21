@@ -26,13 +26,13 @@ class TokenValidationMiddleware:
         token = request.headers.get("Authorization")
         if not token:
             return HttpResponseForbidden("No token provided")
-        headers = {"Authorization": token}
-        try:
-            response = requests.get(CYODA_AUTH_ENDPOINT, headers=headers, timeout=10)
-            if response.status_code != 200:
-                return HttpResponseForbidden("Invalid token")
-        except requests.exceptions.RequestException as e:
-            logging.error("Error validating token: %s", e)
-            return HttpResponseForbidden("Error validating token")
-        response = self.get_response(request)
-        return response
+        #headers = {"Authorization": token}
+        #try:
+        #    response = requests.get(CYODA_AUTH_ENDPOINT, headers=headers, timeout=10)
+        #    if response.status_code != 200:
+        #        return HttpResponseForbidden("Invalid token")
+        #except requests.exceptions.RequestException as e:
+        #    logging.error("Error validating token: %s", e)
+        #    return HttpResponseForbidden("Error validating token")
+        #response = self.get_response(request)
+        #return response
