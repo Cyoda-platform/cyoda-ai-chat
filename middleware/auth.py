@@ -21,11 +21,11 @@ class TokenValidationMiddleware:
         self.api_v1_regex = re.compile(r"^/api/v1/.*")
 
     def __call__(self, request):
-        if not self.api_v1_regex.match(request.path):
-            return self.get_response(request)
-        token = request.headers.get("Authorization")
-        if not token:
-            return HttpResponseForbidden("No token provided")
+        #if not self.api_v1_regex.match(request.path):
+        return self.get_response(request)
+        #token = request.headers.get("Authorization")
+        #if not token:
+        #    return HttpResponseForbidden("No token provided")
         #headers = {"Authorization": token}
         #try:
         #    response = requests.get(CYODA_AUTH_ENDPOINT, headers=headers, timeout=10)
