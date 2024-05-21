@@ -8,10 +8,16 @@ QA_SYSTEM_PROMPT = """You are a data source connection generation tool. You shou
         Use the following pieces of retrieved context to answer the question.
 
         {context}"""
+LLM_TEMPERATURE = 0.85
+LLM_MAX_TOKENS = 4000
+LLM_MODEL = "gpt-4o"
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 processor = RagProcessor()
-#not tread safe - will be replaced in the future
+# not tread safe - will be replaced in the future
 connections_chat_history = {}
 
 
@@ -35,12 +41,18 @@ class ConnectionProcessor:
         """
         Initializes the ConnectionProcessor instance.
         """
-        #gpt-3.5-turbo-16k	
-        #gpt-4
-        self.llm = processor.initialize_llm(temperature=0.85, max_tokens=4000, model = "gpt-4o", openai_api_base=None)
+        self.llm = processor.initialize_llm(
+            temperature=LLM_TEMPERATURE,
+            max_tokens=LLM_MAX_TOKENS,
+            model=LLM_MODEL,
+            openai_api_base=None,
+        )
         self.web_docs = self.get_web_script_docs()
         self.rag_chain = processor.process_rag_chain(
-            self.llm, QA_SYSTEM_PROMPT, CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH, self.web_docs
+            self.llm,
+            QA_SYSTEM_PROMPT,
+            CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH,
+            self.web_docs,
         )
         self.chat_history = ChatHistoryService(connections_chat_history)
 
@@ -69,5 +81,7 @@ class ConnectionProcessor:
         Returns:
             str: The answer to the question.
         """
-        answer = processor.ask_question(chat_id, question, self.chat_history, self.rag_chain)
+        answer = processor.ask_question(
+            chat_id, question, self.chat_history, self.rag_chain
+        )
         return answer

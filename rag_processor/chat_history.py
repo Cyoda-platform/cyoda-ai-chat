@@ -1,5 +1,6 @@
 from langchain.schema import HumanMessage
 
+
 class ChatHistoryService:
     """
     A class to manage chat history for a chat service.

@@ -4,6 +4,7 @@ from .prompts_library_service import PromptService
 
 promptService = PromptService()
 
+
 class PromptView(views.APIView):
     def get(self, request, topic, user, index=None):
         if index is not None:

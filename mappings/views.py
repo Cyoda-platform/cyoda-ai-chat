@@ -7,12 +7,17 @@ from .logic.serializers import InitialMappingSerializer, ChatMappingSerializer
 from .logic.interactor import MappingsInteractor
 
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 interactor = MappingsInteractor()
+
 
 # Views
 class InitialMappingView(views.APIView):
     """View to handle initial mapping requests."""
+
     def post(self, request, *args, **kwargs):
         """Handle POST requests to initialize a mapping."""
         logger.info("Starting mapping initialization:")
@@ -27,20 +32,30 @@ class InitialMappingView(views.APIView):
                 response = interactor.initialize_mapping(
                     chat_id=initial_mapping_request.id,
                     ds_input=initial_mapping_request.input,
-                    entity=initial_mapping_request.entity
+                    entity=initial_mapping_request.entity,
                 )
-                
-                logger.info("Initial mapping request processed for chat_id: %s", initial_mapping_request.id)
+
+                logger.info(
+                    "Initial mapping request processed for chat_id: %s",
+                    initial_mapping_request.id,
+                )
                 return Response(response, status=status.HTTP_200_OK)
             except Exception as e:
                 logger.error("Error processing initial mapping request: %s", e)
-                return Response({"error": "Failed to process initial mapping request"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Failed to process initial mapping request"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
         else:
-            logger.warning("Invalid data for initial mapping request: %s", serializer.errors)
+            logger.warning(
+                "Invalid data for initial mapping request: %s", serializer.errors
+            )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ChatMappingView(views.APIView):
     """View to handle chat mapping requests."""
+
     def post(self, request, *args, **kwargs):
         """Handle POST requests to process a chat mapping."""
         serializer = ChatMappingSerializer(data=request.data)
@@ -56,19 +71,29 @@ class ChatMappingView(views.APIView):
                     chat_mapping_request.id,
                     chat_mapping_request.user_script,
                     chat_mapping_request.return_object,
-                    chat_mapping_request.question
+                    chat_mapping_request.question,
                 )
-                logger.info("Chat mapping request processed for chat_id: %s", chat_mapping_request.id)
+                logger.info(
+                    "Chat mapping request processed for chat_id: %s",
+                    chat_mapping_request.id,
+                )
                 return Response(response, status=status.HTTP_200_OK)
             except Exception as e:
                 logger.error("Error processing chat mapping request: %s", e)
-                return Response({"error": "Failed to process chat mapping request"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Failed to process chat mapping request"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
         else:
-            logger.warning("Invalid data for chat mapping request: %s", serializer.errors)
+            logger.warning(
+                "Invalid data for chat mapping request: %s", serializer.errors
+            )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ChatMappingClearView(views.APIView):
     """View to handle chat mapping clear requests."""
+
     def get(self, request):
         """Handle GET requests to clear a chat mapping."""
         chat_id = request.query_params.get("id", "")
@@ -78,10 +103,15 @@ class ChatMappingClearView(views.APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             logger.error("Error clearing context: %s", e)
-            return Response({"error": "Failed to clear context"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Failed to clear context"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class ReturnDataView(views.APIView):
     """View to handle requests to return data."""
+
     def get(self, request):
         """Handle GET requests to return data."""
         return_data = RETURN_DATA

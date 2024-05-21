@@ -1,7 +1,5 @@
-import os
 import sys
 import logging
-from dotenv import load_dotenv
 from typing import List, Dict
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -17,24 +15,31 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
+from common_utils.utils import get_env_var
 from .chat_history import ChatHistoryService
 
+
+# Env vars
+OPENAI_API_KEY = get_env_var("OPENAI_API_KEY")
+DEEPSEEK_API_KEY = get_env_var("DEEPSEEK_API_KEY")
+WORK_DIR = get_env_var("WORK_DIR")
+GIT_WORK_DIR = get_env_var("GIT_WORK_DIR")
+CYODA_AI_CONFIG_GEN_PATH = get_env_var("CYODA_AI_CONFIG_GEN_PATH")
+CYODA_AI_REPO_URL = get_env_var("CYODA_AI_REPO_URL")
+CYODA_AI_REPO_BRANCH = get_env_var("CYODA_AI_REPO_BRANCH")
+ENV = get_env_var("ENV")
+
+
 # Constants
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-WORK_DIR = os.getenv("WORK_DIR")
-GIT_WORK_DIR = os.getenv("GIT_WORK_DIR")
-CYODA_AI_CONFIG_GEN_PATH = os.getenv("CYODA_AI_CONFIG_GEN_PATH")
-CYODA_AI_REPO_URL = os.getenv("CYODA_AI_REPO_URL")
-CYODA_AI_REPO_BRANCH = os.getenv("CYODA_AI_REPO_BRANCH")
-LOCAL = os.getenv("LOCAL")
+SPLIT_CHUNK_SIZE = 1000
+SPLIT_CHUNK_OVERLAP = 200
+SPLIT_DOCS_LOAD_K = 10
 
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user question \
         which might reference context in the chat history, formulate a standalone question \
         which can be understood without the chat history. Do NOT answer the question, \
         just reformulate it if needed and otherwise return it as is."""
 
-# Initialize logging
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +59,7 @@ class RagProcessor:
 
         loader = (
             self._directory_loader(path)
-            if os.getenv("LOCAL", "false").lower() == "true"
+            if ENV.lower() == "local"
             else self._git_loader(path)
         )
         docs = loader.load()
@@ -64,7 +69,7 @@ class RagProcessor:
         text_splitter = self._get_text_splitter()
         splits = text_splitter.split_documents(docs)
         vectorstore = self._get_vector_store(splits)
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
+        retriever = vectorstore.as_retriever(search_kwargs={"k": SPLIT_DOCS_LOAD_K})
         count = vectorstore._collection.count()
         logging.info("Number of documents in vectorstore: %s", count)
 
@@ -95,9 +100,7 @@ class RagProcessor:
         """Initializes the language model with the OpenAI API key."""
         llm = ChatOpenAI(
             model=model,
-            openai_api_key=(
-                DEEPSEEK_API_KEY if model.startswith("deepseek") else OPENAI_API_KEY
-            ),
+            openai_api_key=OPENAI_API_KEY,
             openai_api_base=openai_api_base,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -131,7 +134,9 @@ class RagProcessor:
         return Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
 
     def _get_text_splitter(self):
-        return RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        return RecursiveCharacterTextSplitter(
+            chunk_size=SPLIT_CHUNK_SIZE, chunk_overlap=SPLIT_CHUNK_OVERLAP
+        )
 
     def _git_loader(self, path: str) -> GitLoader:
         logger.info("Using remote documents")
