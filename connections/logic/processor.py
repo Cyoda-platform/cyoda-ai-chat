@@ -1,4 +1,6 @@
 import logging
+from typing import List
+
 from rag_processor.processor import RagProcessor
 from rag_processor.chat_history import ChatHistoryService
 
@@ -48,11 +50,11 @@ class ConnectionProcessor:
             openai_api_base=None,
         )
         self.web_docs = self.get_web_script_docs()
+        self.vectorstore = processor.init_vectorstore(
+            CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH, self.web_docs
+        )
         self.rag_chain = processor.process_rag_chain(
-            self.llm,
-            QA_SYSTEM_PROMPT,
-            CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH,
-            self.web_docs,
+            self.vectorstore, self.llm, QA_SYSTEM_PROMPT
         )
         self.chat_history = ChatHistoryService(connections_chat_history)
 
@@ -85,3 +87,16 @@ class ConnectionProcessor:
             chat_id, question, self.chat_history, self.rag_chain
         )
         return answer
+
+    def load_additional_sources(self, urls: List[str]):
+        """
+        Loads additional sources to the vector store
+
+        Args:
+            question (str): The question to ask.
+
+        Returns:
+            str: The answer with success message
+        """
+
+        return processor.load_additional_sources(self.vectorstore, urls)

@@ -45,8 +45,11 @@ class MappingProcessor:
             openai_api_base=None,
         )
         web_docs = self.get_web_script_docs()
+        self.vectorstore = processor.init_vectorstore(
+            CYODA_AI_CONFIG_GEN_MAPPINGS_PATH, web_docs
+        )
         self.rag_chain = processor.process_rag_chain(
-            self.llm, QA_SYSTEM_PROMPT, CYODA_AI_CONFIG_GEN_MAPPINGS_PATH, web_docs
+            self.vectorstore, self.llm, QA_SYSTEM_PROMPT
         )
         self.chat_history = ChatHistoryService(mapping_chat_history)
 

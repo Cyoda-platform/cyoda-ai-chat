@@ -44,13 +44,17 @@ logger = logging.getLogger(__name__)
 
 
 class RagProcessor:
-    def __init__(self):
-        logging.info("Initializing RagProcessor v1...")
 
-    def process_rag_chain(
-        self, llm, qa_system_prompt: str, path: str, config_docs: List[Dict]
-    ) -> None:
-        # Use pysqlite3 for SQLite if it's available
+    def __init__(self):
+    
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=SPLIT_CHUNK_SIZE, chunk_overlap=SPLIT_CHUNK_OVERLAP
+        )
+        logging.info("Initializing RagProcessor v1...")
+        
+    def init_vectorstore(
+        self,  path: str, config_docs: List[Dict]
+    ):
         try:
             __import__("pysqlite3")
             sys.modules["sqlite3"] = sys.modules["pysqlite3"]
@@ -65,13 +69,20 @@ class RagProcessor:
         docs = loader.load()
         docs.extend(config_docs)
         logging.info("Number of documents loaded: %s", len(docs))
+        splits = self.text_splitter.split_documents(docs)
+        return Chroma.from_documents(
+            documents=splits, embedding=OpenAIEmbeddings()
+        )
 
-        text_splitter = self._get_text_splitter()
-        splits = text_splitter.split_documents(docs)
-        vectorstore = self._get_vector_store(splits)
-        retriever = vectorstore.as_retriever(search_kwargs={"k": SPLIT_DOCS_LOAD_K})
-        count = vectorstore._collection.count()
-        logging.info("Number of documents in vectorstore: %s", count)
+    def process_rag_chain(
+        self, vectorstore, llm, qa_system_prompt: str
+    ) -> None:
+        # Use pysqlite3 for SQLite if it's available
+        
+        retriever = vectorstore.as_retriever(
+            search_kwargs={"k": SPLIT_DOCS_LOAD_K}
+        )
+        logging.info("Number of documents in vectorstore: %s", vectorstore._collection.count())
 
         contextualize_q_prompt = self._get_prompt_template()
         history_aware_retriever = create_history_aware_retriever(
@@ -121,6 +132,24 @@ class RagProcessor:
         logging.info(ai_msg["answer"])
         return ai_msg["answer"]
 
+    def load_additional_sources(self, vectorstore, urls: List[str]):
+        try:
+            logger.info("Fetching additional documents: %s", urls)
+            docs = self.get_web_docs(urls)
+            splits = self.text_splitter.split_documents(docs)
+            vectorstore.add_documents(splits)
+            vectorstore.persist()
+            logger.info("new count = , %s", vectorstore._collection.count())
+
+            return {"answer": "Added additional sources successfully"}
+        except Exception as e:
+            logger.error(
+                "An error occurred during adding additional sources: %s",
+                e,
+                exc_info=True,
+            )
+            return {"error": str(e)}
+
     def _get_prompt_template(self):
         return ChatPromptTemplate.from_messages(
             [
@@ -130,13 +159,8 @@ class RagProcessor:
             ]
         )
 
-    def _get_vector_store(self, splits: List[Dict]) -> Chroma:
-        return Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
-
     def _get_text_splitter(self):
-        return RecursiveCharacterTextSplitter(
-            chunk_size=SPLIT_CHUNK_SIZE, chunk_overlap=SPLIT_CHUNK_OVERLAP
-        )
+        return self.text_splitter
 
     def _git_loader(self, path: str) -> GitLoader:
         logger.info("Using remote documents")

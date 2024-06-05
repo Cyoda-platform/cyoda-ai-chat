@@ -4,12 +4,14 @@ from enum import Enum
 class Keys(Enum):
     ENDPOINTS = "endpoints"
     PARAMETERS = "parameters"
+    SOURCES = "sources"
     RANDOM = "random"
 
 
 RETURN_DATA = {
     Keys.ENDPOINTS.value: "Return only resulting HttpEndpointDto json object. Remove any leading text. If you do not know something - just return empty json.",
     Keys.PARAMETERS.value: "Return only resulting HttpParameterDto-s. Include only parameters asked for, not all parameters. Remove any leading text. If you do not know something - just return empty json.",
+    Keys.SOURCES.value: "",
     Keys.RANDOM.value: "",
 }
 

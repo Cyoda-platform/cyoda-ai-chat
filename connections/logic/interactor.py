@@ -41,6 +41,9 @@ class ConnectionsInteractor:
             raise BadRequest("Invalid input. All parameters are required.")
 
         try:
+            if return_object == prompts.Keys.SOURCES.value:
+                urls = question.split(', ')
+                return processor.load_additional_sources(urls)
             # Initialize current_script and return_string
             if chat_id not in initialized_requests:
                 return self._initialize_connection_request(

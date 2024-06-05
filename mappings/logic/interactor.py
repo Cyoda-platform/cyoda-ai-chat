@@ -61,7 +61,7 @@ class MappingsInteractor:
         logger.info("Current script: %s", user_script)
         return_string = prompts.RETURN_DATA.get(return_object, "")
         ai_question = f"{question}. {current_script} {return_string}"
-        logger.info("Asking question: {ai_question}")
+        logger.info("Asking question: %s", ai_question)
         #todo
         if return_object == prompts.Keys.TRANSFORMERS.value:
             return self._process_transformers(question)
