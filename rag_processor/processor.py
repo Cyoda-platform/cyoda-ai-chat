@@ -61,7 +61,7 @@ class RagProcessor:
         except ImportError:
             pass
         
-        if INIT_LLM == 'true':
+        if INIT_LLM == 'openai':
             loader = (
                 self._directory_loader(path)
                 if ENV.lower() == "local"
@@ -81,7 +81,7 @@ class RagProcessor:
         self, vectorstore, llm, qa_system_prompt: str
     ) -> None:
         # Use pysqlite3 for SQLite if it's available
-        if INIT_LLM == 'true':
+        if INIT_LLM == 'openai':
             retriever = vectorstore.as_retriever(
                 search_kwargs={"k": SPLIT_DOCS_LOAD_K}
             )
@@ -116,7 +116,7 @@ class RagProcessor:
         """Initializes the language model with the OpenAI API key."""
         print("INIT_LLM")
         print(INIT_LLM)
-        if INIT_LLM == 'true':
+        if INIT_LLM == 'openai':
             llm = ChatOpenAI(
                 model=model,
                 openai_api_key=OPENAI_API_KEY,
