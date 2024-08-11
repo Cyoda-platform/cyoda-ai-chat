@@ -10,6 +10,7 @@ from common_utils.utils import get_env_var
 load_dotenv()
 
 # Constants
+API_URL = get_env_var("API_URL")
 CYODA_AUTH_ENDPOINT = get_env_var("CYODA_AUTH_ENDPOINT")
 ENABLE_AUTH = get_env_var("ENABLE_AUTH")
 
@@ -29,7 +30,8 @@ class TokenValidationMiddleware:
             return HttpResponseForbidden("No token provided")
         headers = {"Authorization": token}
         try:
-            response = requests.get(CYODA_AUTH_ENDPOINT, headers=headers, timeout=10)
+            url = f"{API_URL}/{CYODA_AUTH_ENDPOINT}"
+            response = requests.get(url, headers=headers, timeout=10)
             if response.status_code != 200:
                 return HttpResponseForbidden("Invalid token")
         except requests.exceptions.RequestException as e:

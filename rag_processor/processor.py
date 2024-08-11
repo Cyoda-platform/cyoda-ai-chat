@@ -28,7 +28,7 @@ CYODA_AI_CONFIG_GEN_PATH = get_env_var("CYODA_AI_CONFIG_GEN_PATH")
 CYODA_AI_REPO_URL = get_env_var("CYODA_AI_REPO_URL")
 CYODA_AI_REPO_BRANCH = get_env_var("CYODA_AI_REPO_BRANCH")
 ENV = get_env_var("ENV")
-
+INIT_LLM = get_env_var("INIT_LLM")
 
 # Constants
 SPLIT_CHUNK_SIZE = 1000
@@ -60,47 +60,52 @@ class RagProcessor:
             sys.modules["sqlite3"] = sys.modules["pysqlite3"]
         except ImportError:
             pass
-
-        loader = (
-            self._directory_loader(path)
-            if ENV.lower() == "local"
-            else self._git_loader(path)
-        )
-        docs = loader.load()
-        docs.extend(config_docs)
-        logging.info("Number of documents loaded: %s", len(docs))
-        splits = self.text_splitter.split_documents(docs)
-        return Chroma.from_documents(
-            documents=splits, embedding=OpenAIEmbeddings()
-        )
+        
+        if INIT_LLM == 'true':
+            loader = (
+                self._directory_loader(path)
+                if ENV.lower() == "local"
+                else self._git_loader(path)
+            )
+            docs = loader.load()
+            docs.extend(config_docs)
+            logging.info("Number of documents loaded: %s", len(docs))
+            splits = self.text_splitter.split_documents(docs)
+            return Chroma.from_documents(
+                documents=splits, embedding=OpenAIEmbeddings()
+            )
+        else:
+            pass
 
     def process_rag_chain(
         self, vectorstore, llm, qa_system_prompt: str
     ) -> None:
         # Use pysqlite3 for SQLite if it's available
-        
-        retriever = vectorstore.as_retriever(
-            search_kwargs={"k": SPLIT_DOCS_LOAD_K}
-        )
-        logging.info("Number of documents in vectorstore: %s", vectorstore._collection.count())
+        if INIT_LLM == 'true':
+            retriever = vectorstore.as_retriever(
+                search_kwargs={"k": SPLIT_DOCS_LOAD_K}
+            )
+            logging.info("Number of documents in vectorstore: %s", vectorstore._collection.count())
 
-        contextualize_q_prompt = self._get_prompt_template()
-        history_aware_retriever = create_history_aware_retriever(
-            llm, retriever, contextualize_q_prompt
-        )
+            contextualize_q_prompt = self._get_prompt_template()
+            history_aware_retriever = create_history_aware_retriever(
+                llm, retriever, contextualize_q_prompt
+            )
 
-        qa_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", qa_system_prompt),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
-        rag_chain = create_retrieval_chain(
-            history_aware_retriever, question_answer_chain
-        )
-        return rag_chain
+            qa_prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", qa_system_prompt),
+                    MessagesPlaceholder("chat_history"),
+                    ("human", "{input}"),
+                ]
+            )
+            question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+            rag_chain = create_retrieval_chain(
+                history_aware_retriever, question_answer_chain
+            )
+            return rag_chain
+        else:
+            pass
 
     def get_web_docs(self, urls: List[str]) -> List[Dict]:
         web_loader = WebBaseLoader(urls)
@@ -109,14 +114,19 @@ class RagProcessor:
 
     def initialize_llm(self, temperature, max_tokens, model, openai_api_base):
         """Initializes the language model with the OpenAI API key."""
-        llm = ChatOpenAI(
-            model=model,
-            openai_api_key=OPENAI_API_KEY,
-            openai_api_base=openai_api_base,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        return llm
+        print("INIT_LLM")
+        print(INIT_LLM)
+        if INIT_LLM == 'true':
+            llm = ChatOpenAI(
+                model=model,
+                openai_api_key=OPENAI_API_KEY,
+                openai_api_base=openai_api_base,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return llm
+        else:
+            pass
 
     def ask_question(
         self, chat_id: str, question: str, chat_history: ChatHistoryService, rag_chain

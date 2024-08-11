@@ -29,51 +29,72 @@ import logging
 from rest_framework import status, views
 from rest_framework.response import Response
 from django.core.exceptions import BadRequest, ObjectDoesNotExist
-from .logic.dto import InitialConnectionRequestDTO, ChatConnectionRequestDTO
+from .logic.dto import (
+    InitialConnectionRequestDTO,
+    ChatConnectionRequestDTO,
+    ChatIngestDataRequestDTO,
+)
 from .logic.serializers import InitialConnectionSerializer, ChatConnectionSerializer
 from .logic.interactor import ConnectionsInteractor
 from .logic.prompts import RETURN_DATA
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 interactor = ConnectionsInteractor()
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
+
 
 class InitialConnectionView(views.APIView):
     """
     View to handle initial connection requests.
     """
+
     def post(self, request, *args, **kwargs):
         """
         Handle POST requests to initialize a connection.
         """
         serializer = InitialConnectionSerializer(data=request.data)
         if serializer.is_valid():
-            initial_connection_request = InitialConnectionRequestDTO(**serializer.validated_data)
+            initial_connection_request = InitialConnectionRequestDTO(
+                **serializer.validated_data
+            )
             try:
                 response = interactor.initialize_connection(
                     initial_connection_request.id,
                     initial_connection_request.ds_doc,
                 )
-                logger.info("Initial connection established for chat_id: %s", initial_connection_request.id)
+                logger.info(
+                    "Initial connection established for chat_id: %s",
+                    initial_connection_request.id,
+                )
                 return Response(response, status=status.HTTP_200_OK)
             except Exception as e:
                 logger.error("Error initializing connection: %s", e)
-                return Response({"error": "Failed to initialize connection"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Failed to initialize connection"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
         else:
             logger.warning("Invalid data for initial connection: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ChatConnectionView(views.APIView):
     """
     View to handle chat connection requests.
     """
+
     def post(self, request, *args, **kwargs):
         """
         Handle POST requests to process a chat connection.
         """
         serializer = ChatConnectionSerializer(data=request.data)
         if serializer.is_valid():
-            chat_connection_request = ChatConnectionRequestDTO(**serializer.validated_data)
+            chat_connection_request = ChatConnectionRequestDTO(
+                **serializer.validated_data
+            )
             try:
                 response = interactor.chat(
                     chat_connection_request.id,
@@ -81,25 +102,40 @@ class ChatConnectionView(views.APIView):
                     chat_connection_request.return_object,
                     chat_connection_request.question,
                 )
-                logger.info("Chat connection request processed for chat_id: %s", chat_connection_request.id)
+                logger.info(
+                    "Chat connection request processed for chat_id: %s",
+                    chat_connection_request.id,
+                )
                 return Response(response, status=status.HTTP_200_OK)
             except BadRequest as e:
                 logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
-                return Response({"error": "Invalid input. Please check the request."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid input. Please check the request."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             except ObjectDoesNotExist as e:
                 logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
-                return Response({"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND
+                )
             except Exception as e:
                 logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
-                return Response({"error": "Failed to process chat connection request"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Failed to process chat connection request"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
         else:
-            logger.warning("Invalid data for chat connection request: %s", serializer.errors)
+            logger.warning(
+                "Invalid data for chat connection request: %s", serializer.errors
+            )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ChatConnectionClearView(views.APIView):
     """
     View to handle chat connection clear requests.
     """
+
     def get(self, request):
         """
         Handle GET requests to clear a chat connection.
@@ -111,13 +147,17 @@ class ChatConnectionClearView(views.APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             logger.error("Error clearing context: %s", e)
-            return Response({"error": "Failed to clear context"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Failed to clear context"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ReturnDataView(views.APIView):
     """
     View to handle requests to return data.
     """
+
     def get(self, request):
         """
         Handle GET requests to return data.
@@ -125,3 +165,90 @@ class ReturnDataView(views.APIView):
         return_data = RETURN_DATA
         logger.info("Returning data")
         return Response(return_data, status=status.HTTP_200_OK)
+
+
+class ChatIngestDataView(views.APIView):
+    """
+    View to handle chat connection requests.
+    """
+
+    def get(self, request):
+        """
+        Handle POST requests to process a chat connection.
+        """
+        print(request.query_params.get("datasource_id", ""))
+        try:
+            token = request.headers.get("Authorization")
+            if not token:
+                return Response(
+                    {"error": "Authorization header is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            interactor.ingest_data(token, request)
+
+            return Response({"success": True}, status=status.HTTP_200_OK)
+        except BadRequest as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Invalid input. Please check the request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ObjectDoesNotExist as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Failed to process chat connection request"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+
+""" class ReturnDataView(views.APIView):
+
+
+    def get(self, request):
+
+        return_data = RETURN_DATA
+        logger.info("Returning data")
+        return Response(return_data, status=status.HTTP_200_OK)
+
+
+class ChatIngestDataView(views.APIView):
+
+
+    def post(self, request, *args, **kwargs):
+
+        print(request.data)
+        chat_request = request.data
+        try:
+            token = request.headers.get("Authorization")
+            if not token:
+                return Response(
+                    {"error": "Authorization header is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            interactor.ingest_data(token, chat_request)
+
+            return Response({"success": True}, status=status.HTTP_200_OK)
+        except BadRequest as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Invalid input. Please check the request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ObjectDoesNotExist as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Failed to process chat connection request"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+ """
