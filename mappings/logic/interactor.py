@@ -7,11 +7,7 @@ from common_utils.utils import parse_json
 from .processor import MappingProcessor
 from . import prompts
 
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('django')
 
 # Initialize the processor and set the logging level
 processor = MappingProcessor()
@@ -134,7 +130,7 @@ class MappingsInteractor:
                 "script" in script_result_json
                 and script_result_json["script"] is not None
             ):
-                logging.info("Script included in response")
+                logger.info("Script included in response")
                 return script_result_json
             else:
                 input_src_paths = self._get_input_scr_params(chat_id)
@@ -143,7 +139,7 @@ class MappingsInteractor:
                 }
                 return script
         except json.JSONDecodeError as e:
-            logging.error("Invalid JSON response from processor: %s", e, exc_info=True)
+            logger.error("Invalid JSON response from processor: %s", e, exc_info=True)
             # Handle JSON decoding error appropriately
             raise APIException("Invalid JSON response from processor", e)
 

@@ -40,7 +40,7 @@ CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user ques
         which can be understood without the chat history. Do NOT answer the question, \
         just reformulate it if needed and otherwise return it as is."""
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('django')
 
 
 class RagProcessor:
@@ -50,7 +50,7 @@ class RagProcessor:
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=SPLIT_CHUNK_SIZE, chunk_overlap=SPLIT_CHUNK_OVERLAP
         )
-        logging.info("Initializing RagProcessor v1...")
+        logger.info("Initializing RagProcessor v1...")
         
     def init_vectorstore(
         self,  path: str, config_docs: List[Dict]
@@ -69,7 +69,7 @@ class RagProcessor:
             )
             docs = loader.load()
             docs.extend(config_docs)
-            logging.info("Number of documents loaded: %s", len(docs))
+            logger.info("Number of documents loaded: %s", len(docs))
             splits = self.text_splitter.split_documents(docs)
             return Chroma.from_documents(
                 documents=splits, embedding=OpenAIEmbeddings()
@@ -85,7 +85,7 @@ class RagProcessor:
             retriever = vectorstore.as_retriever(
                 search_kwargs={"k": SPLIT_DOCS_LOAD_K}
             )
-            logging.info("Number of documents in vectorstore: %s", vectorstore._collection.count())
+            logger.info("Number of documents in vectorstore: %s", vectorstore._collection.count())
 
             contextualize_q_prompt = self._get_prompt_template()
             history_aware_retriever = create_history_aware_retriever(
@@ -139,7 +139,7 @@ class RagProcessor:
         )
 
         chat_history.add_to_chat_history(chat_id, question, ai_msg["answer"])
-        logging.info(ai_msg["answer"])
+        logger.info(ai_msg["answer"])
         return ai_msg["answer"]
 
     def load_additional_sources(self, vectorstore, urls: List[str]):

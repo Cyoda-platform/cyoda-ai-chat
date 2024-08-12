@@ -7,10 +7,7 @@ from .logic.serializers import InitialMappingSerializer, ChatMappingSerializer
 from .logic.interactor import MappingsInteractor
 
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('django')
 interactor = MappingsInteractor()
 
 

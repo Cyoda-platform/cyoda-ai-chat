@@ -36,13 +36,13 @@ from .logic.dto import (
 )
 from .logic.serializers import InitialConnectionSerializer, ChatConnectionSerializer
 from .logic.interactor import ConnectionsInteractor
+from .logic.ingestion_service import DataIngestionService
 from .logic.prompts import RETURN_DATA
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('django')
+
 interactor = ConnectionsInteractor()
+ingestionService = DataIngestionService()
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
 
 
@@ -184,7 +184,7 @@ class ChatIngestDataView(views.APIView):
                     {"error": "Authorization header is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            interactor.ingest_data(token, request)
+            ingestionService.ingest_data(token, request)
 
             return Response({"success": True}, status=status.HTTP_200_OK)
         except BadRequest as e:
@@ -204,51 +204,3 @@ class ChatIngestDataView(views.APIView):
                 {"error": "Failed to process chat connection request"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-
-
-""" class ReturnDataView(views.APIView):
-
-
-    def get(self, request):
-
-        return_data = RETURN_DATA
-        logger.info("Returning data")
-        return Response(return_data, status=status.HTTP_200_OK)
-
-
-class ChatIngestDataView(views.APIView):
-
-
-    def post(self, request, *args, **kwargs):
-
-        print(request.data)
-        chat_request = request.data
-        try:
-            token = request.headers.get("Authorization")
-            if not token:
-                return Response(
-                    {"error": "Authorization header is missing"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            interactor.ingest_data(token, chat_request)
-
-            return Response({"success": True}, status=status.HTTP_200_OK)
-        except BadRequest as e:
-            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
-            return Response(
-                {"error": "Invalid input. Please check the request."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except ObjectDoesNotExist as e:
-            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
-            return Response(
-                {"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
-            return Response(
-                {"error": "Failed to process chat connection request"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
- """

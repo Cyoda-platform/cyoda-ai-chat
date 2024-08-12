@@ -153,3 +153,38 @@ SWAGGER_SETTINGS = {
         }
     },
 }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'class_name_and_traceback': {
+            '()': 'common_utils.logging.ClassNameAndTracebackFilter',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': (
+                '%(levelname)s %(asctime)s [%(class_name)s] %(message)s '
+                '%(pathname)s:%(lineno)d\nStack trace:\n%(stack_trace)s'
+            ),
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'filters': ['class_name_and_traceback'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        # You can add other handlers like file handlers if needed
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        # You can add other loggers here
+    },
+}

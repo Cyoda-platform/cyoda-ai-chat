@@ -14,8 +14,7 @@ API_URL = get_env_var("API_URL")
 CYODA_AUTH_ENDPOINT = get_env_var("CYODA_AUTH_ENDPOINT")
 ENABLE_AUTH = get_env_var("ENABLE_AUTH")
 
-logging.basicConfig(level=logging.INFO)
-
+logger = logging.getLogger('django')
 
 class TokenValidationMiddleware:
     def __init__(self, get_response):
@@ -35,7 +34,7 @@ class TokenValidationMiddleware:
             if response.status_code != 200:
                 return HttpResponseForbidden("Invalid token")
         except requests.exceptions.RequestException as e:
-            logging.error("Error validating token: %s", e)
+            logger.error("Error validating token: %s", e)
             return HttpResponseForbidden("Error validating token")
         response = self.get_response(request)
         return response

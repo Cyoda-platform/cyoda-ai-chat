@@ -10,10 +10,7 @@ LLM_TEMPERATURE = 0.85
 LLM_MAX_TOKENS = 4000
 LLM_MODEL = "gpt-4o"
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('django')
 processor = RagProcessor()
 mapping_chat_history = {}
 
