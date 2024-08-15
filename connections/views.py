@@ -38,10 +38,12 @@ from .logic.serializers import InitialConnectionSerializer, ChatConnectionSerial
 from .logic.interactor import ConnectionsInteractor
 from .logic.ingestion_service import DataIngestionService
 from .logic.prompts import RETURN_DATA
+from .logic.add.service import ImportConnectionInteractor
 
-logger = logging.getLogger('django')
+logger = logging.getLogger("django")
 
 interactor = ConnectionsInteractor()
+import_interactor = ImportConnectionInteractor()
 ingestionService = DataIngestionService()
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
 
@@ -187,6 +189,49 @@ class ChatIngestDataView(views.APIView):
             ingestionService.ingest_data(token, request)
 
             return Response({"success": True}, status=status.HTTP_200_OK)
+        except BadRequest as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Invalid input. Please check the request."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ObjectDoesNotExist as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            return Response(
+                {"error": "Failed to process chat connection request"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ChatImportConnectionView(views.APIView):
+    """
+    View to handle chat connection requests.
+    """
+
+    def post(self, request):
+        """
+        Handle POST requests to process a chat connection.
+        """
+        try:
+            token = request.headers.get("Authorization")
+            if not token:
+                return Response(
+                    {"error": "Authorization header is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            question = request.data["question"]
+            logger.info(question)
+            ds_id = import_interactor.chat(token, question)
+
+            return Response(
+                {"success": True, "datasource_id": ds_id}, status=status.HTTP_200_OK
+            )
         except BadRequest as e:
             logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
             return Response(
