@@ -2,10 +2,12 @@ from enum import Enum
 
 
 class Keys(Enum):
+    CONNECTIONS = "connections"
     ENDPOINTS = "endpoints"
     PARAMETERS = "parameters"
     SOURCES = "sources"
     RANDOM = "random"
+    IMPORT_CONNECTION = "import-connections"
 
 
 RETURN_DATA = {

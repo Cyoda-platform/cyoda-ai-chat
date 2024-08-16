@@ -1,18 +1,21 @@
 import logging
 from typing import List
-
+from common_utils.utils import (
+    get_env_var,
+)
 from rag_processor.processor import RagProcessor
 from rag_processor.chat_history import ChatHistoryService
 
 CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH = "connections/"
-QA_SYSTEM_PROMPT = """You are a data source connection generation tool. You should do your best to answer the question.
-        You are aware of HttpEndpointDto.java object and data sources API. You should be able to map API docs to HttpEndpointDto.java object.
-        Use the following pieces of retrieved context to answer the question.
-
-        {context}"""
-LLM_TEMPERATURE = 0.85
-LLM_MAX_TOKENS = 4000
-LLM_MODEL = "gpt-4o"
+QA_SYSTEM_PROMPT = """You are a connection generation assistant. \
+You will be asked to generate connection configurations. \
+First, analyse the human message and choose a template to fill in: [Connections Questionnaire, HttpConnectionDetailsDto, HttpEndpointDto] \
+Then fill in the values inside $ with curly brackets in the template. Other values in the template should be preserved. Treat it like a test where you need to fill in the blanks. But you cannot modify values out of the scope of your test. \
+Construct and return only the json for the bean you are asked for. Return the resulting json without any comments.  
+{context}"""
+LLM_TEMPERATURE = float(get_env_var("LLM_TEMPERATURE_ADD_CONNECTION"))
+LLM_MAX_TOKENS = int(get_env_var("LLM_MAX_TOKENS_ADD_CONNECTION"))
+LLM_MODEL = get_env_var("LLM_MODEL_ADD_CONNECTION")
 
 logger = logging.getLogger('django')
 
@@ -48,6 +51,7 @@ class ConnectionProcessor:
             openai_api_base=None,
         )
         self.web_docs = self.get_web_script_docs()
+        logger.info("LOADING DOCS FOR IMPORT CONFIG")
         self.vectorstore = processor.init_vectorstore(
             CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH, self.web_docs
         )

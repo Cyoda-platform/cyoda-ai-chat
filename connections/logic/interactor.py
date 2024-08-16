@@ -1,26 +1,45 @@
 import json
 import logging
-import requests
-from typing import Optional, Dict
+import jsonschema
+from typing import List, Dict
 from django.core.exceptions import BadRequest
 from rest_framework.exceptions import APIException
-from common_utils.utils import parse_json
 from . import prompts
 from .processor import ConnectionProcessor
-from .dto import ChatIngestDataRequestDTO
-from common_utils.utils import get_env_var, send_get_request, send_post_request, send_put_request
+from common_utils.utils import get_env_var, send_post_request, parse_json
 
-logger = logging.getLogger('django')
+from common_utils.utils import (
+    get_env_var,
+    send_post_request,
+    generate_uuid,
+    validate_result,
+    parse_json,
+    read_json_file,
+)
 
-processor = ConnectionProcessor()
-# todo not thread safe - will replace later
-initialized_requests = set()
-
+# Configuration
+ENV = get_env_var("ENV")
+MAX_RETRIES_ADD_CONNECION = int(get_env_var("MAX_RETRIES_ADD_CONNECION"))
+WORK_DIR = (
+    get_env_var("WORK_DIR") if ENV.lower() == "local" else get_env_var("GIT_WORK_DIR")
+)
 API_URL = get_env_var("API_URL")
-GET_CONNECTION_CONFIG_PATH = get_env_var("GET_CONNECTION_CONFIG_PATH")
-POST_CHECK_CONNECTION_PATH = get_env_var("POST_CHECK_CONNECTION_PATH")
-POST_SAVE_DATA_PATH = get_env_var("POST_SAVE_DATA_PATH")
-POST_SAVE_SCHEMA_PATH = get_env_var("POST_SAVE_SCHEMA_PATH")
+QUESTIONNAIRE_JSON_SCHEMA_PATH = get_env_var(
+    "QUESTIONNAIRE_JSON_SCHEMA_PATH_ADD_CONNECTION"
+)
+CONNECTION_JSON_SCHEMA_PATH = get_env_var("CONNECTION_JSON_SCHEMA_PATH_ADD_CONNECTION")
+ENDPOINT_JSON_SCHEMA_PATH = get_env_var("ENDPOINT_JSON_SCHEMA_PATH_ADD_CONNECTION")
+PARAMETER_JSON_SCHEMA_PATH = get_env_var("PARAMETER_JSON_SCHEMA_PATH_ADD_CONNECTION")
+IMPORT_CONFIGS_PATH = get_env_var("IMPORT_CONFIGS_PATH_ADD_CONNECTION")
+DATASOURCES_CONFIG_SCHEMA_PATH = get_env_var(
+    "DATASOURCES_CONFIG_SCHEMA_PATH_ADD_CONNECTION"
+)
+
+# Logger setup
+logger = logging.getLogger("django")
+initialized_requests = set()
+processor = ConnectionProcessor()
+
 
 class ConnectionsInteractor:
     def __init__(self):
@@ -31,8 +50,6 @@ class ConnectionsInteractor:
         try:
             # Clear chat history
             processor.chat_history.clear_chat_history(chat_id)
-
-            # Remove chat_id from initialized_requests if it exists
             if chat_id in initialized_requests:
                 initialized_requests.remove(chat_id)
                 return {"message": f"Chat context with id {chat_id} cleared."}
@@ -42,274 +59,231 @@ class ConnectionsInteractor:
             )
             raise APIException("An error occurred while clearing the context.", e)
 
-    def chat(self, chat_id, user_endpoint, return_object, question):
+    def chat(self, token, chat_id, user_endpoint, return_object, question):
         # Validate input
+        self.validate_chat_input(chat_id, return_object, question)
+
+        try:
+            if return_object == prompts.Keys.IMPORT_CONNECTION.value:
+                return self.handle_import_connection(token, chat_id, question)
+            
+            if return_object == prompts.Keys.CONNECTIONS.value:
+                return self.handle_generate_connection(chat_id, question)
+            
+            if return_object == prompts.Keys.ENDPOINTS.value:
+                return self.handle_generate_endpoint(chat_id, question)
+            
+            if return_object == prompts.Keys.PARAMETERS.value:
+                return self.handle_generate_parameter(chat_id, question)
+            
+            if return_object == prompts.Keys.SOURCES.value:
+                return self.handle_additional_sources(question)
+
+            else:
+                result = processor.ask_question(chat_id, question)
+                return {"answer": result}
+
+        except Exception as e:
+            self.log_and_raise_error("An error occurred while processing the chat", e)
+
+    def validate_chat_input(self, chat_id, return_object, question):
         if not all([chat_id, return_object, question]):
             raise BadRequest("Invalid input. All parameters are required.")
 
-        try:
-            if return_object == prompts.Keys.SOURCES.value:
-                urls = question.split(", ")
-                return processor.load_additional_sources(urls)
-            # Initialize current_script and return_string
-            if chat_id not in initialized_requests:
-                return self._initialize_connection_request(
-                    chat_id, return_object, question
-                )
-            # Construct ai_question
-            current_endpoint = (
-                f"Current endpoint: {user_endpoint}." if user_endpoint else ""
-            )
-            ai_question = f"{question}. {current_endpoint} \n {prompts.RETURN_DATA.get(return_object, '')}"
-            logger.info("Sending AI request %s", ai_question)
-            # Ask question to processor
-            result = processor.ask_question(chat_id, ai_question)
-            # Handle different return_objects
-            return self._handle_return_object(return_object, result)
-        except Exception as e:
-            logger.error(
-                "An error occurred while processing the chat: %s", e, exc_info=True
-            )
-            raise APIException("An error occurred while processing the chat.", e)
+    def handle_import_connection(self, token, chat_id, question):
+        connection_data = self.generate_connection_data(chat_id, question)
+        ds_id = connection_data["dataSources"][0]["id"]
+        self.save_data(token, connection_data)
+        return {"success": True, "datasource_id": ds_id}
+    
+    def handle_generate_connection(self, chat_id, question):
+        connection_data = self.generate_connection_data(chat_id, question)
+        #connection_data = json.dumps(connection_data, indent=4)
+        return connection_data
 
-    def _handle_return_object(self, return_object, result):
-        if return_object == prompts.Keys.RANDOM.value:
-            return {"answer": result}
-        elif return_object == prompts.Keys.ENDPOINTS.value:
-            return self._process_endpoint_result(result)
-        elif return_object == prompts.Keys.PARAMETERS.value:
-            return self._process_parameters_result(result)
-        else:
+    def handle_generate_endpoint(self, chat_id, question):
+        parsed_questionnaire = self.fill_in_questionnaire(chat_id, question)
+        connection_name = parsed_questionnaire["connection_name"]
+        connection_base_url = parsed_questionnaire["connection_base_url"]
+        connection_endpoints = parsed_questionnaire["connection_endpoints"]
+        generate_endpoints_prompt = f"Analyze the connection {connection_name} with base_url {connection_base_url} API document. "+f"Analyze the user requirement {question}. "+"Generate com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto endpoint config for {endpoint_name}. "+"Return only the DTO JSON."
+        
+        endpoints_dto = self.generate_endpoints_dto(
+            chat_id, connection_endpoints, generate_endpoints_prompt
+        )
+        return endpoints_dto
+
+    def handle_generate_parameter(self, chat_id, question):
+        parsed_questionnaire = self.fill_in_questionnaire(chat_id, question)
+        connection_name = parsed_questionnaire["connection_name"]
+        connection_base_url = parsed_questionnaire["connection_base_url"]
+        connection_endpoints = parsed_questionnaire["connection_endpoints"]
+        generate_endpoints_prompt = f"Analyze the connection {connection_name} with base_url {connection_base_url} API document. "+f"Analyze the user requirement {question}. " + f"Generate HttpParameterDto parameter config for {connection_endpoints}. "+"Return only the parameter DTO JSON as a JSON List."
+        parameter_dto = self.generate_parameter_dto(chat_id, generate_endpoints_prompt)
+        return parameter_dto
+
+    def handle_additional_sources(self, question):
+        urls = question.split(", ")
+        return processor.load_additional_sources(urls)
+
+    def construct_ai_question(self, user_endpoint, question, return_object):
+        current_endpoint = f"Current endpoint: {user_endpoint}." if user_endpoint else ""
+        return f"{question}. {current_endpoint} \n {prompts.RETURN_DATA.get(return_object, '')}"
+
+    def log_and_raise_error(self, message, exception):
+        logger.error(f"{message}: %s", exception, exc_info=True)
+        raise APIException(message, exception)
+
+    def generate_connection_data(self, chat_id: str, question: str):
+        parsed_questionnaire = self.fill_in_questionnaire(chat_id, question)
+        connection_data = self.process_connection(chat_id, parsed_questionnaire)
+        return connection_data
+
+    def process_connection(self, chat_id: str, parsed_questionnaire: dict):
+        connection_name = parsed_questionnaire["connection_name"]
+        connection_base_url = parsed_questionnaire["connection_base_url"]
+        connection_endpoints = parsed_questionnaire["connection_endpoints"]
+        generate_connection_prompt = (
+            f"Write com.cyoda.plugins.datasource.dtos.connection.HttpConnectionDetailsDto "
+            f"connection config for API {connection_name} with base_url {connection_base_url}. "
+            "Return only the DTO JSON."
+        )
+        connection_dto = self.generate_connection_dto(
+            chat_id, generate_connection_prompt
+        )
+        generate_endpoints_prompt = "Generate com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto endpoint config for {endpoint_name}. Return only the DTO JSON."
+        endpoints_dto = self.generate_endpoints_dto(
+            chat_id, connection_endpoints, generate_endpoints_prompt
+        )
+
+        return self.build_result_connection(
+            f"{WORK_DIR}/{DATASOURCES_CONFIG_SCHEMA_PATH}",
+            connection_name,
+            connection_dto,
+            endpoints_dto,
+        )
+
+    def generate_dto(self, chat_id: str, prompt: str, schema_path: str):
+        try:
+            result = processor.ask_question(chat_id, prompt)
+            return self.validate_and_parse_json(chat_id, result, f"{WORK_DIR}/{schema_path}")
+        except Exception as e:
+            logger.error(f"Error generating DTO for schema {schema_path}: %s", e)
+            raise
+
+
+    def fill_in_questionnaire(self, chat_id: str, question: str):
+        prompt = f"Fill in Connections Questionnaire json based on the user question: {question}. Add necessary parameters. Return only Questionnaire json."
+        return self.generate_dto(chat_id, prompt, QUESTIONNAIRE_JSON_SCHEMA_PATH)
+    
+    def generate_connection_dto(self, chat_id: str, prompt: str):
+        return self.generate_dto(chat_id, prompt, CONNECTION_JSON_SCHEMA_PATH)
+
+    def generate_endpoints_dto(self, chat_id: str, endpoints_list: List[any], prompt: str):
+        endpoint_configs = []
+        for endpoint_name in endpoints_list:
             try:
-                result_dict = json.loads(result)
-                return result_dict
-            except json.JSONDecodeError as e:
-                logger.error(
-                    "Invalid JSON response from processor: %s", e, exc_info=True
-                )
-                return {
-                    "error": "Invalid JSON response from processor",
-                    "details": str(e),
-                }
+                endpoint_prompt = prompt.replace("{endpoint_name}", str(endpoint_name))
+                endpoint_configs.append(self.generate_dto(chat_id, endpoint_prompt, ENDPOINT_JSON_SCHEMA_PATH))
+            except Exception as e:
+                logger.error("Error generating endpoint DTO: %s", e)
+        return endpoint_configs
 
-    def _initialize_connection_request(self, chat_id, return_object, question):
-        if not all([chat_id, question]):
-            raise BadRequest("Invalid input. chat_id and question are required.")
-
+    def generate_parameter_dto(self, chat_id: str, prompt: str):
         try:
-            logger.info("Initializing request: ")
-            if return_object != prompts.Keys.ENDPOINTS.value:
-                return {"answer": "Please, initialize the endpoints request first."}
-            # Ask questions to the processor and handle the responses
-            prompts_list = [(prompts.INITIAL_API_ANALYSIS_PROMPT)]
-
-            for prompt in prompts_list:
-                question_formatted = prompt.format(question)
-                result = self._ask_processor_question(chat_id, question_formatted)
-                logger.info("Prompt %s returns result %s", prompt, result)
-            init_endpoints_result = self._ask_processor_question(
-                chat_id, prompts.INITIAL_API_PROMPT
-            )
-            logger.info("Prompt second returns result %s", init_endpoints_result)
-            # Process the endpoint result
-            resp = self._process_endpoint_result(init_endpoints_result)
-            initialized_requests.add(chat_id)
-            return resp
-        except Exception as e:
-            logger.error(
-                "An error occurred while initializing the connection request: %s",
-                e,
-                exc_info=True,
-            )
-            raise APIException(
-                "An error occurred while initializing the connection request.", e
-            )
-
-    def _ask_processor_question(self, chat_id, question):
-        try:
-            result = processor.ask_question(chat_id, question)
-            return result
-        except Exception as e:
-            logger.error(
-                "An error occurred while asking the processor a question: %s",
-                e,
-                exc_info=True,
-            )
-            raise
-
-    def _process_parameters_result(self, script_result):
-        try:
-            script_result = parse_json(script_result)
-            # Parse the JSON response
-            parameters_result_json = json.loads(script_result)
-            logger.info(parameters_result_json)
-            result = self.process_template_parameters(
-                template=None, res_params=parameters_result_json
-            )
-            return result
-        except json.JSONDecodeError as e:
-            raise APIException("Invalid JSON response from processor", e)
-        except Exception as e:
-            raise APIException(
-                "An error occurred while processing the endpoint result.", e
-            )
-
-    def _process_endpoint_result(self, script_result):
-        try:
-            script_result = parse_json(script_result)
-            # Parse the JSON response
-            endpoint_result_json = json.loads(script_result)
-
-            # Check if the JSON response contains the 'operation' key
-            if (
-                "operation" in endpoint_result_json
-                and endpoint_result_json["operation"] is not None
-            ):
-                # Process the endpoint result
-                template = self._create_endpoint_template(endpoint_result_json)
-                template = self._populate_endpoint_template(
-                    endpoint_result_json, template
-                )
-                return template
+            result = processor.ask_question(chat_id, prompt)
+            parsed_result = parse_json(result)
+            parameters_list = []
+            if isinstance(parsed_result, str):
+                parsed_result = f"[{parsed_result}]" if not parsed_result.startswith("[") else parsed_result
+                parameters_list = json.loads(parsed_result)
             else:
-                return {"answer": endpoint_result_json}
-        except json.JSONDecodeError as e:
-            raise APIException("Invalid JSON response from processor", e)
+                parameters_list = parsed_result
+            parameters_configs = []
+            logger.info(parameters_list)
+            for parameter in parameters_list:
+                try:
+                    parameters_configs.append(self.validate_and_parse_json(chat_id, json.dumps(parameter), f"{WORK_DIR}/{PARAMETER_JSON_SCHEMA_PATH}"))
+                except Exception as e:
+                    logger.error("Error generating endpoint DTO: %s", e)
+            return parameters_configs
         except Exception as e:
-            raise APIException(
-                "An error occurred while processing the endpoint result.", e
-            )
+                logger.error("Error generating parameter DTO: %s", e)
 
-    def _create_endpoint_template(self, endpoint_result_json):
-        # Create a template with default values
-        template = {
-            "@bean": "com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto",
-            "chainings": [],
-            "operation": "",
-            "cache": {"parameters": [], "ttl": 0},
-            "connectionIndex": 0,
-            "type": "test",
-            "query": "",
-            "method": "",
-            "parameters": [],
-            "bodyTemplate": "",
-            "connectionTimeout": 300,
-            "readWriteTimeout": 300,
-        }
-        keys_to_check = [
-            "operation",
-            "query",
-            "bodyTemplate",
-            "connectionTimeout",
-            "readWriteTimeout",
-        ]
-        for key in keys_to_check:
-            if key in endpoint_result_json and endpoint_result_json[key] is not None:
-                template[key] = endpoint_result_json[key]
-        if (
-            "method" in endpoint_result_json
-            and endpoint_result_json["method"] is not None
-        ):
-            template["method"] = (
-                "POST_BODY"
-                if endpoint_result_json["method"].startswith("POST")
-                else "GET"
-            )
-        return template
 
-    def _populate_endpoint_template(self, endpoint_result_json, template):
-        if (
-            "parameters" in endpoint_result_json
-            and endpoint_result_json["parameters"] is not None
-        ):
-            res_params = endpoint_result_json["parameters"]
-
-            template_parameters = self.process_template_parameters(template, res_params)
-            template["parameters"] = template_parameters
-        logger.info("template==")
-        logger.info(template)
-        return template
-
-    def process_template_parameters(self, template, res_params):
-        template_parameters = []
-        param_keys_to_check = [
-            "name",
-            "defaultValue",
-            "secure",
-            "required",
-            "template",
-            "templateValue",
-            "excludeFromCacheKey",
-            "type",
-            "optionValues",
-        ]
-        for res_param in res_params:
-            param_template = {
-                "name": "",
-                "defaultValue": "",
-                "secure": "false",
-                "required": "true",
-                "excludeFromCacheKey": "false",
-                "type": "",
-                "optionValues": [],
-            }
-            for key in param_keys_to_check:
-                if key in res_param and res_param[key] is not None:
-                    param_template[key] = res_param[key]
-            param_template = self._process_endpoint_param(
-                template, res_param, param_template
-            )
-            logger.info("parameters==")
-            logger.info(param_template)
-            template_parameters.append(param_template)
-        return template_parameters
-
-    def _process_endpoint_param(self, template, res_param, param_template):
-        if any(arg is None for arg in [res_param, param_template]):
-            raise ValueError("Res_param, and param_template cannot be None")
-
+    def build_result_connection(
+        self, template_path: str, name: str, connection: dict, endpoints: List[dict]
+    ):
         try:
-            # Process the parameter based on the method type
-            if template is not None:
-                param_template["type"] = self._process_method_type(
-                    template, param_template
-                )
-            param_template["templateValue"] = self._process_template_value(res_param)
-            param_template["template"] = (
-                "true" if param_template["templateValue"] else "false"
-            )
-            return param_template
+            data = read_json_file(template_path)
+            data["dataSources"][0]["name"] = name
+            data["dataSources"][0]["id"] = str(generate_uuid())
+            data["dataSources"][0]["connections"].append(connection)
+            data["dataSources"][0]["endpoints"].extend(endpoints)
+            return data
         except Exception as e:
-            logger.error(
-                "An error occurred while processing endpoint parameter: %s",
-                e,
-                exc_info=True,
-            )
+            logger.error("Error building result connection: %s", e)
             raise
 
-    def _process_template_value(self, res_param):
-        if "templateValue" in res_param:
-            return res_param["templateValue"]
-        elif "template" in res_param and str(res_param["template"]).startswith("$"):
-            return res_param["template"]
-        return None
+    def save_data(self, token: str, data: Dict):
+        path = f"{IMPORT_CONFIGS_PATH}"
+        data = json.dumps(data, indent=4)
+        logger.info(f"Data prepared for import: {data}")
+        try:
+            response = send_post_request(
+                token=token, api_url=API_URL, path=path, data=data, json=None
+            )
+            logger.info(f"Data saved successfully: {response}")
+            return response
+        except Exception as e:
+            logger.error("Error saving data: %s", e)
+            raise
 
-    def _process_method_type(self, template, param_template):
-        if template["method"] == "POST_BODY":
-            return "REQUEST_BODY_VARIABLE"
-        elif template["method"] == "GET":
-            return self._process_get_method(template, param_template)
+    def validate_and_parse_json(
+        self,
+        chat_id: str,
+        data: str,
+        schema_path: str,
+        max_retries: int = MAX_RETRIES_ADD_CONNECION,
+    ):
+        """
+        Parses and validates JSON data against a given schema. If validation fails,
+        retries the operation up to `max_retries` times by asking the processor to retry.
 
-    def _process_get_method(self, template, param_template):
-        param_placeholder_name = f"{{{param_template['name']}}}"
-        if "query" in template and param_placeholder_name in template["query"]:
-            # Check if the value associated with the key does not start with $
-            path_placeholder = f"${param_placeholder_name}"
-            if path_placeholder not in template["query"]:
-                logger.info(template["query"])
-                template["query"] = template["query"].replace(
-                    param_placeholder_name, path_placeholder
+        :param data: The JSON data as a string.
+        :param schema_path: The path to the JSON schema file.
+        :param max_retries: The maximum number of retries if validation fails.
+        :return: Parsed JSON data as a dictionary.
+        :raises ValueError: If JSON validation fails after the maximum retries.
+        """
+        try:
+            parsed_data = parse_json(data)
+        except Exception as e:
+            logger.error(f"Failed to parse JSON: {e}")
+            raise ValueError("Invalid JSON data provided.") from e
+
+        attempt = 0
+        while attempt <= max_retries:
+            try:
+                validate_result(parsed_data, schema_path)
+                logger.info(f"JSON validation successful on attempt {attempt + 1}.")
+                attempt += 1
+                return json.loads(parsed_data)
+            except jsonschema.exceptions.ValidationError as e:
+                attempt += 1
+                logger.warning(
+                    f"JSON validation failed on attempt {attempt + 1} with error: {e.message}"
                 )
-            return "PATH_VARIABLE"
-        else:
-            return "REQUEST_PARAM"
+                if attempt < max_retries:
+                    question = (
+                        f"Retry the last step. JSON validation failed with error: {e.message}. "
+                        "Return only the DTO JSON."
+                    )
+                    retry_result = processor.ask_question(chat_id, question)
+                    parsed_data = parse_json(retry_result)
+            except Exception as e:
+                logger.error("Maximum retry attempts reached. Validation failed.")
+            finally:
+                attempt += 1
+        logger.error("Maximum retry attempts reached. Validation failed.")
+        raise ValueError("JSON validation failed after retries.")
