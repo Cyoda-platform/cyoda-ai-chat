@@ -1,6 +1,8 @@
 import logging
 from typing import List
-
+from common_utils.utils import (
+    get_env_var,
+)
 from rag_processor.processor import RagProcessor
 from rag_processor.chat_history import ChatHistoryService
 
@@ -11,9 +13,9 @@ First, analyse the human message and choose a template to fill in: [Connections 
 Then fill in the values inside $ with curly brackets in the template. Other values in the template should be preserved. Treat it like a test where you need to fill in the blanks. But you cannot modify values out of the scope of your test. \
 Construct and return only the json for the bean you are asked for. Return the resulting json without any comments.  
 {context}"""
-LLM_TEMPERATURE = 0.85
-LLM_MAX_TOKENS = 4000
-LLM_MODEL = "gpt-4o-mini"
+LLM_TEMPERATURE = float(get_env_var("LLM_TEMPERATURE_ADD_CONNECTION"))
+LLM_MAX_TOKENS = int(get_env_var("LLM_MAX_TOKENS_ADD_CONNECTION"))
+LLM_MODEL = get_env_var("LLM_MODEL_ADD_CONNECTION")
 
 logger = logging.getLogger('django')
 

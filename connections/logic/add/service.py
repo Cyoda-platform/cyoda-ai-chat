@@ -17,13 +17,15 @@ from common_utils.utils import (
 )
 
 # Configuration
-WORK_DIR = get_env_var("WORK_DIR")
+ENV = get_env_var("ENV")
+MAX_RETRIES_ADD_CONNECION = int(get_env_var("MAX_RETRIES_ADD_CONNECION"))
+WORK_DIR = get_env_var("WORK_DIR") if ENV.lower() == "local" else get_env_var("GIT_WORK_DIR")
 API_URL = get_env_var("API_URL")
-QUESTIONNAIRE_JSON_SCHEMA_PATH = "data/v1/connections/connections_questionnaire.json"
-CONNECTION_JSON_SCHEMA_PATH = "data/v1/connections/connection_json_schema.json"
-ENDPOINT_JSON_SCHEMA_PATH = "data/v1/connections/endpoint_json_schema.json"
-IMPORT_CONFIGS_PATH = "data-source-config/import-cobi-config?cleanBeforeImport=false&doPostProcess=false"
-DATASOURCES_CONFIG_SCHEMA_PATH = "data/v1/connections/connection_dto_template.json"
+QUESTIONNAIRE_JSON_SCHEMA_PATH = get_env_var("QUESTIONNAIRE_JSON_SCHEMA_PATH_ADD_CONNECTION")
+CONNECTION_JSON_SCHEMA_PATH = get_env_var("CONNECTION_JSON_SCHEMA_PATH_ADD_CONNECTION")
+ENDPOINT_JSON_SCHEMA_PATH = get_env_var("ENDPOINT_JSON_SCHEMA_PATH_ADD_CONNECTION")
+IMPORT_CONFIGS_PATH = get_env_var("IMPORT_CONFIGS_PATH_ADD_CONNECTION")
+DATASOURCES_CONFIG_SCHEMA_PATH = get_env_var("DATASOURCES_CONFIG_SCHEMA_PATH_ADD_CONNECTION")
 # Logger setup
 logger = logging.getLogger("django")
 
@@ -83,7 +85,7 @@ class ImportConnectionInteractor:
             endpoints_dto,
         )
         
-    def validate_and_parse_json(self, data: str, schema_path: str, max_retries: int = 1):
+    def validate_and_parse_json(self, data: str, schema_path: str, max_retries: int = MAX_RETRIES_ADD_CONNECION):
         """
         Parses and validates JSON data against a given schema. If validation fails,
         retries the operation up to `max_retries` times by asking the processor to retry.
@@ -105,19 +107,24 @@ class ImportConnectionInteractor:
             try:
                 validate_result(parsed_data, schema_path)
                 logger.info(f"JSON validation successful on attempt {attempt + 1}.")
+                attempt += 1
                 return json.loads(parsed_data)
             except jsonschema.exceptions.ValidationError as e:
+                attempt += 1
                 logger.warning(
                     f"JSON validation failed on attempt {attempt + 1} with error: {e.message}"
                 )
                 if attempt < max_retries:
-                    attempt += 1
                     question = (
                         f"Retry the last step. JSON validation failed with error: {e.message}. "
                         "Return only the DTO JSON."
                     )
                     retry_result = processor.ask_question(id, question)
                     parsed_data = parse_json(retry_result)
+            except Exception as e:
+                logger.error("Maximum retry attempts reached. Validation failed.")
+            finally:
+                attempt += 1
         logger.error("Maximum retry attempts reached. Validation failed.")
         raise ValueError("JSON validation failed after retries.")
 
