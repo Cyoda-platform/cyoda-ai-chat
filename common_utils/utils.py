@@ -65,9 +65,10 @@ def read_json_file(file_path: str):
 
 def send_get_request(token: str, api_url: str, path: str) -> Optional[requests.Response]:
     url = f"{api_url}/{path}"
+    token = f"Bearer {token}" if not token.startswith('Bearer') else token
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"{token}",
     }
     try:
         response = requests.get(url, headers=headers)
@@ -102,9 +103,10 @@ def send_post_request(token: str, api_url: str, path: str, data=None, json=None)
 
 def send_put_request(token: str, api_url: str, path: str, data=None, json=None) -> Optional[requests.Response]:
     url = f"{api_url}/{path}"
+    token = f"Bearer {token}" if not token.startswith('Bearer') else token
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"{token}",
     }
     try:
         response = requests.put(url, headers=headers, data=data, json=json)

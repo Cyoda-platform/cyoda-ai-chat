@@ -23,6 +23,7 @@ class TokenValidationMiddleware:
 
     def __call__(self, request):
         if not self.api_v1_regex.match(request.path) or not ENABLE_AUTH:
+            logger.info("Request not authenticated")
             return self.get_response(request)
         token = request.headers.get("Authorization")
         if not token:

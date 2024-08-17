@@ -11,10 +11,12 @@ class Keys(Enum):
 
 
 RETURN_DATA = {
+    Keys.CONNECTIONS.value: "",
     Keys.ENDPOINTS.value: "Return only resulting HttpEndpointDto json object. Remove any leading text. If you do not know something - just return empty json.",
     Keys.PARAMETERS.value: "Return only resulting HttpParameterDto-s. Include only parameters asked for, not all parameters. Remove any leading text. If you do not know something - just return empty json.",
     Keys.SOURCES.value: "",
     Keys.RANDOM.value: "",
+    Keys.IMPORT_CONNECTION.value: ""
 }
 
 INITIAL_API_ANALYSIS_PROMPT = "{}. Do you know this API? Print all the parameters for this API. How would you represent it as HttpEndpointDto json object?"
