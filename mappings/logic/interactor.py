@@ -14,7 +14,7 @@ processor = MappingProcessor()
 
 # Sets to keep track of initialized script and columns, not thread-safe - will be replaced later
 initialized_mappings = set()
-
+mappings_cache = {}
 
 class MappingsInteractor:
     """
@@ -39,10 +39,12 @@ class MappingsInteractor:
         logger.info(
             "Mapping parameters: Entity=%s, Data source input=%s", entity, ds_input
         )
+        
+        mappings_cache[chat_id] = ds_input
 
         questions = [
-            prompts.MAPPINGS_INITIAL_PROMPT.format(ds_input, entity, entity),
-            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT,
+            #prompts.MAPPINGS_INITIAL_PROMPT.format(ds_input, entity, entity),
+            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity, entity, ds_input),
         ]
 
         logger.info("Mapping init questions list: %s", questions)
@@ -124,24 +126,37 @@ class MappingsInteractor:
     def _process_script_return(self, chat_id, script_result):
         try:
             script_result = parse_json(script_result)
-            logger.info("script result: %s", script_result)
-            script_result_json = json.loads(script_result)
-            if (
-                "script" in script_result_json
-                and script_result_json["script"] is not None
-            ):
-                logger.info("Script included in response")
-                return script_result_json
-            else:
-                input_src_paths = self._get_input_scr_params(chat_id)
-                script = {
+            paths_data = json.loads(mappings_cache[chat_id])
+            input_src_paths = self.generate_paths(paths_data)
+            script = {
                     "script": {"body": script_result, "inputSrcPaths": input_src_paths}
-                }
-                return script
+            }
+            return script
         except json.JSONDecodeError as e:
             logger.error("Invalid JSON response from processor: %s", e, exc_info=True)
             # Handle JSON decoding error appropriately
             raise APIException("Invalid JSON response from processor", e)
+        
+    def generate_paths(self, data, current_path=""):
+        logger.info("CURRENT_DATA")
+        logger.info(data)
+        paths = []
+        if isinstance(data, dict):
+            for key, value in data.items():
+                new_path = f"{current_path}/{key}" if current_path else key
+                if isinstance(value, (dict, list)):
+                    paths.extend(self.generate_paths(value, new_path))
+                else:
+                    paths.append(new_path)
+        elif isinstance(data, list):
+            for i in range(len(data)):
+                new_path = f"{current_path}/*"
+                if isinstance(data[i], (dict, list)):
+                    paths.extend(self.generate_paths(data[i], new_path))
+                else:
+                    paths.append(new_path)
+
+        return paths
 
     def _get_input_scr_params(self, chat_id):
         refine_question = prompts.SCRIPT_REFINE_PROMPT

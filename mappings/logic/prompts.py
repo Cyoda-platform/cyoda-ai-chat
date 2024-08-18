@@ -11,16 +11,16 @@ class Keys(Enum):
 
 
 RETURN_DATA = {
-    Keys.SCRIPT.value: 'Return ONLY javascript nashorn "script" json object which contains body with javascript code and inputSrcPaths (remember p1/*/p2 template) inside "script" attribute. Remove any leading text',
-    Keys.CODE.value: "Return JavaScript Nashorn code only that can be used for code autocomplete. Remove any leading text. Return code only i.e. the contents of script body.",
+    Keys.SCRIPT.value: 'Base your answer on the available list_of_input_to_entity_properties. Remove any leading text',
+    Keys.CODE.value: "Base your answer on the available list_of_input_to_entity_properties.",
     Keys.RANDOM.value: "",
-    Keys.AUTOCOMPLETE.value: "Return only the relevant code for autocomplete. Do not return all code, just a few lines of code that answer the exact question - this is just autocomplete.",
+    Keys.AUTOCOMPLETE.value: "Return only the relevant code for autocomplete.",
     Keys.COLUMNS.value: 'Return only column mapping json object which contains srcColumnPath and etc inside "column" attribute. Add to this json one more attribute "action" with the value either add or delete depending on the question. Return inside an array. Remove any leading text',
     Keys.TRANSFORMERS.value: "Return a relevant transformerKey for this column mapping from the list of available transformers. Return only transformerKey WITHOUT any other text.",
 }
 
 MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}? What are the input attributes? How do does input correspond to the entity? Which attributes can be mapped from the input to the entity. Return json array in the form of [src_json_path:dst_json_path]. Use your common knowledge and semantic analysis."
-MAPPINGS_INITIAL_PROMPT_SCRIPT = "How to initialize Java objects according to the docs in javascript nashorn scripting? What are the cyoda rules of writing inputSrcPaths for arrays, e.g. should you use p1/*/p2 pattern? When should inputSrcPaths equal p1/* and when p1/*/p2?"
+MAPPINGS_INITIAL_PROMPT_SCRIPT = "Get {} entity json schema from the context. If you don't have it - return that you do not have data for {} entity and stop execution. Fill in Mappings Questionnaire json based on the input: {}. Return the resulting Questionnaire json."
 
 MAPPINGS_DEFAULT_PROMPTS = [
     'analyze the script and add all missing inputSrcPaths (they should be available for all input attributes used in the script). Use slash "/" for the jsonpath.',

@@ -1,14 +1,20 @@
 import logging
 from rag_processor.processor import RagProcessor
 from rag_processor.chat_history import ChatHistoryService
-
+from common_utils.utils import (
+    get_env_var,
+)
 CYODA_AI_CONFIG_GEN_MAPPINGS_PATH = "mappings/"
-QA_SYSTEM_PROMPT = """You are a mapping tool. You should do your best to answer the question.
-        Use the following pieces of retrieved context to answer the question. \
-        {context}"""
-LLM_TEMPERATURE = 0.85
-LLM_MAX_TOKENS = 4000
-LLM_MODEL = "gpt-4o"
+QA_SYSTEM_PROMPT = """You are a mapping generation code assistant assistant. \
+You are an expert in Javascript Nashorn and understand how it is different from Java and javascript.
+You will be asked to generate Nashorn javascript code to map input to entity. \
+First, analyse the input and the entity and fill in Mapping Questionnaire.
+Then do your best to do code assistance for mapping the input to the entity.   
+{context}"""
+
+LLM_TEMPERATURE = float(get_env_var("LLM_TEMPERATURE_ADD_SCRIPT"))
+LLM_MAX_TOKENS = int(get_env_var("LLM_MAX_TOKENS_ADD_SCRIPT"))
+LLM_MODEL = get_env_var("LLM_MODEL_ADD_SCRIPT")
 
 logger = logging.getLogger('django')
 processor = RagProcessor()
