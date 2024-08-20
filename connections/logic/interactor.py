@@ -43,7 +43,7 @@ processor = ConnectionProcessor()
 
 class ConnectionsInteractor:
     def __init__(self):
-        logger.info("Initializing...")
+        logger.info("Initializing ConnectionsInteractor...")
 
     def clear_context(self, chat_id):
         # Validate input

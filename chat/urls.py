@@ -38,6 +38,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/connections/", include("connections.urls")),
     path("api/v1/mappings/", include("mappings.urls")),
+    path("api/v1/workflows/", include("workflows.urls")),
+    path("api/v1/grpc/", include("grpc_client.urls")),
     path("api/v1/prompts/", include("prompts_lib.urls")),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),

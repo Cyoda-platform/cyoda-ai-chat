@@ -186,7 +186,16 @@ class ChatIngestDataView(views.APIView):
                     {"error": "Authorization header is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            ingestionService.ingest_data(token, request)
+            request_data={
+                "ds_id": request.query_params.get("datasource_id"),
+                "operation": request.query_params.get("operation"),
+                "schema_flag": request.query_params.get("schema") == "true",
+                "data_format": request.query_params.get("dataFormat"),
+                "entity_name": request.query_params.get("entityName"),
+                "model_version": request.query_params.get("modelVersion"),
+                "entity_type": request.query_params.get("entityType")
+            }
+            ingestionService.ingest_data(token, request_data)
 
             return Response({"success": True}, status=status.HTTP_200_OK)
         except BadRequest as e:

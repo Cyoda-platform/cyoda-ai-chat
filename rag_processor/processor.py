@@ -68,7 +68,8 @@ class RagProcessor:
                 else self._git_loader(path)
             )
             docs = loader.load()
-            docs.extend(config_docs)
+            if config_docs:
+                docs.extend(config_docs)
             logger.info("Number of documents loaded: %s", len(docs))
             splits = self.text_splitter.split_documents(docs)
             return Chroma.from_documents(
