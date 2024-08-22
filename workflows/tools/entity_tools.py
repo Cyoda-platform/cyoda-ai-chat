@@ -89,7 +89,7 @@ class EntityTools:
         workflow_schema_path= f"data/v1/workflows/{workflow_name}.json"
         workflow_schema = read_json_file(f"{WORK_DIR}/{workflow_schema_path}")
         prompt = (
-            f"You are given the user specified workflow data '{workflow_data}'. Based on this data fill in workflow_schema json: {workflow_schema}. Return only workflow_schema json."
+            f"You are given the user specified chat_id '{chat_id}', workflow_name '{workflow_name}' and workflow data '{workflow_data}'. Based on this data fill in workflow_schema json: {workflow_schema}. Return only workflow_schema json."
         )
         result_data = rag_processor.ask_question(chat_id, prompt)
         workflow_schema_validation_path= f"{WORK_DIR}/data/v1/workflows/{workflow_name}_schema.json"

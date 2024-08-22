@@ -21,6 +21,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
 
+
 schema_view = get_schema_view(
    openapi.Info(
       title="Cyoda AI API",
@@ -40,6 +41,7 @@ urlpatterns = [
     path("api/v1/mappings/", include("mappings.urls")),
     path("api/v1/workflows/", include("workflows.urls")),
     path("api/v1/grpc/", include("grpc_client.urls")),
+    path("api/v1/trino/", include("data_service.urls")),
     path("api/v1/prompts/", include("prompts_lib.urls")),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),

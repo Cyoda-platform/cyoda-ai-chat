@@ -17,7 +17,7 @@ logger = logging.getLogger('django')
 
 processor = RagProcessor()
 # not tread safe - will be replaced in the future
-connections_chat_history = {}
+workflow_chat_history = {}
 
 
 class WorkflowProcessor:
@@ -54,7 +54,7 @@ class WorkflowProcessor:
         self.rag_chain = processor.process_rag_chain(
             self.vectorstore, self.llm, QA_SYSTEM_PROMPT
         )
-        self.chat_history = ChatHistoryService(connections_chat_history)
+        self.chat_history = ChatHistoryService(workflow_chat_history)
 
     def ask_question(self, chat_id, question):
         """

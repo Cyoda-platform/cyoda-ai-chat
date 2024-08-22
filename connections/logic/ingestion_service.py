@@ -1,5 +1,6 @@
 import logging
 from .processor import ConnectionProcessor
+
 from common_utils.utils import (
     get_env_var,
     send_get_request,
@@ -9,10 +10,10 @@ from common_utils.utils import (
 
 logger = logging.getLogger("django")
 
-
 processor = ConnectionProcessor()
 # todo not thread safe - will replace later
 initialized_requests = set()
+
 
 API_URL = get_env_var("API_URL")
 GET_CONNECTION_CONFIG_PATH = get_env_var("GET_CONNECTION_CONFIG_PATH")
@@ -30,6 +31,7 @@ class DataIngestionError(Exception):
 class DataIngestionService:
     def __init__(self):
         logger.info("Initializing...")
+        
 
     def ingest_data(self, token: str, data):
         try:

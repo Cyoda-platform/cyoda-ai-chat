@@ -95,7 +95,14 @@ class GRPCClient:
         await asyncio.gather(producer, consumer)
         
     def process_data(self, data):
-        if 'processorName' in data and data['processorName'] == 'add_connection_for_data_model':
+        
+        if 'processorName' in data and data['processorName'] == 'notify_success':
+            ##ai logic
+            logger.info("notify_success")
+            entity = data['payload']['data']
+            data_ingestion_tools.notify_success(entity)
+        
+        elif 'processorName' in data and data['processorName'] == 'add_connection_for_data_model':
             ##ai logic
             logger.info("add_connection_for_data_model")
             entity = data['payload']['data']

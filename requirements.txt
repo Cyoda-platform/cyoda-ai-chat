@@ -28,3 +28,6 @@ jsonschema==4.23.0
 grpcio==1.64.1
 grpcio-tools==1.64.1
 protobuf==5.27.3
+
+#trino
+trino==0.329.0
