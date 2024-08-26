@@ -184,6 +184,7 @@ class ConnectionsInteractor:
         try:
             endpoint_prompt = prompt.replace("{endpoints}", str(endpoints_list))
             endpoint_configs.extend(self.generate_dto(chat_id, endpoint_prompt, ENDPOINT_JSON_SCHEMA_PATH))
+            endpoint_configs = [config for config in endpoint_configs if config["method"] in ["POST_BODY", "GET"]]
         except Exception as e:
             logger.error("Error generating endpoint DTO: %s", e)
         return endpoint_configs

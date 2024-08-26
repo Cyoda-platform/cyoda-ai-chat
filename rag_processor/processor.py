@@ -112,6 +112,12 @@ class RagProcessor:
         web_loader = WebBaseLoader(urls)
         web_docs = web_loader.load()
         return web_docs
+    
+    def get_web_xml_docs(self, urls: List[str]) -> List[Dict]:
+        web_xml_loader = WebBaseLoader(urls)
+        web_xml_loader.default_parser = "xml"
+        web_docs = web_xml_loader.load()
+        return web_docs
 
     def initialize_llm(self, temperature, max_tokens, model, openai_api_base):
         """Initializes the language model with the OpenAI API key."""
@@ -146,7 +152,10 @@ class RagProcessor:
     def load_additional_sources(self, vectorstore, urls: List[str]):
         try:
             logger.info("Fetching additional documents: %s", urls)
-            docs = self.get_web_docs(urls)
+            xml_urls = [url for url in urls if url.endswith(".xml")]
+            other_urls = [url for url in urls if not url.endswith(".xml")]
+            docs = self.get_web_docs(other_urls)
+            docs.extend(self.get_web_xml_docs(xml_urls))
             splits = self.text_splitter.split_documents(docs)
             vectorstore.add_documents(splits)
             vectorstore.persist()

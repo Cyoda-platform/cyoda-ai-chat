@@ -31,3 +31,6 @@ protobuf==5.27.3
 
 #trino
 trino==0.329.0
+
+#
+lxml==5.3.0
