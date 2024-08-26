@@ -106,7 +106,7 @@ class ConnectionsInteractor:
         connection_name = parsed_questionnaire["connection_name"]
         connection_base_url = parsed_questionnaire["connection_base_url"]
         connection_endpoints = parsed_questionnaire["connection_endpoints"]
-        generate_endpoints_prompt = f"Analyze the connection {connection_name} with base_url {connection_base_url} API document. "+f"Analyze the user requirement {question}. "+"Generate com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto endpoint config for {endpoint_name}. "+"Return only the DTO JSON."
+        generate_endpoints_prompt = f"Analyze the connection {connection_name} with base_url {connection_base_url} API document. "+f"Analyze the user requirement {question}. "+"Generate com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto endpoint config for {endpoints}. "+"Return only the DTO JSON list."
         
         endpoints_dto = self.generate_endpoints_dto(
             chat_id, connection_endpoints, generate_endpoints_prompt
@@ -151,7 +151,7 @@ class ConnectionsInteractor:
         connection_dto = self.generate_connection_dto(
             chat_id, generate_connection_prompt
         )
-        generate_endpoints_prompt = "Generate com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto endpoint config for {endpoint_name}. Return only the DTO JSON."
+        generate_endpoints_prompt = "Generate com.cyoda.plugins.datasource.dtos.endpoint.HttpEndpointDto endpoint configs for endpoints: {endpoints}. Return only the DTO JSON list."
         endpoints_dto = self.generate_endpoints_dto(
             chat_id, connection_endpoints, generate_endpoints_prompt
         )
@@ -181,12 +181,11 @@ class ConnectionsInteractor:
 
     def generate_endpoints_dto(self, chat_id: str, endpoints_list: List[any], prompt: str):
         endpoint_configs = []
-        for endpoint_name in endpoints_list:
-            try:
-                endpoint_prompt = prompt.replace("{endpoint_name}", str(endpoint_name))
-                endpoint_configs.append(self.generate_dto(chat_id, endpoint_prompt, ENDPOINT_JSON_SCHEMA_PATH))
-            except Exception as e:
-                logger.error("Error generating endpoint DTO: %s", e)
+        try:
+            endpoint_prompt = prompt.replace("{endpoints}", str(endpoints_list))
+            endpoint_configs.extend(self.generate_dto(chat_id, endpoint_prompt, ENDPOINT_JSON_SCHEMA_PATH))
+        except Exception as e:
+            logger.error("Error generating endpoint DTO: %s", e)
         return endpoint_configs
 
     def generate_parameter_dto(self, chat_id: str, prompt: str):
