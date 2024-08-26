@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 import jsonschema
 from typing import List, Dict
 from django.core.exceptions import BadRequest
@@ -216,7 +217,7 @@ class ConnectionsInteractor:
     ):
         try:
             data = read_json_file(template_path)
-            data["dataSources"][0]["name"] = name
+            data["dataSources"][0]["name"] = name + "_" + str(uuid.uuid1())
             data["dataSources"][0]["id"] = str(generate_uuid())
             data["dataSources"][0]["connections"].append(connection)
             data["dataSources"][0]["endpoints"].extend(endpoints)
