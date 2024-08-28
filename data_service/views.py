@@ -75,3 +75,20 @@ class ChatTrinoClearView(views.APIView):
                 {"error": "Failed to clean trino chat"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class ChatTrinoRunQueryView(views.APIView):
+    """View to handle chat mapping requests."""
+
+    def post(self, request, *args, **kwargs):
+        """Handle POST requests to process a chat trino."""
+        logger.info("Starting ChatTrinoView")
+        try:
+            response = interactor.run_query(request.data["query"])
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error("Error processing trino chat: %s", e)
+            return Response(
+                {"error": "Failed to process trino chat request"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

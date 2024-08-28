@@ -31,14 +31,22 @@ class TrinoInteractor:
 
     def chat(self, chat_id, question):
         try:
-            result = processor.ask_question(chat_id, question)
+            result = processor.ask_question_agent(chat_id, question)
             return {"success": True, "message": f"{result}"}
         except Exception as e:
             self.log_and_raise_error("An error occurred while processing the chat", e)
             
+    def run_query(self, query):
+        try:
+            result = processor.run_query(query)
+            return {"success": True, "message": f"{result}"}
+        except Exception as e:
+            self.log_and_raise_error("An error occurred while processing the chat", e)
+            
+            
     def initialize(self, chat_id):
         try:
-            result = processor.ask_question(chat_id, f"What tables do you have? PLease use chat_id '{chat_id}'")
+            result = processor.ask_question_agent(chat_id, f"What tables do you have? PLease use chat_id '{chat_id}'")
             return {"success": True, "message": f"{result}"}
         except Exception as e:
             self.log_and_raise_error("An error occurred while processing the chat", e)

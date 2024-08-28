@@ -2,6 +2,7 @@ import logging
 import base64
 # Common utilities
 from common_utils.utils import get_env_var
+from langchain_community.utilities.sql_database import SQLDatabase
 
 # RAG processor and chat history services
 from rag_processor.processor import RagProcessor
@@ -44,15 +45,10 @@ processor = RagProcessor()
 # not tread safe - will be replaced in the future
 trino_chat_history = {}
 
-conn = connect(
-host=TRINO_HOST,
-port=443,
-user=TRINO_USER,
-auth=BasicAuthentication(TRINO_USER, TRINO_PASSWORD),
-catalog="cyoda",
-schema="tdb_arr",
-)
-cur = conn.cursor()
+connection_string = f"trino://{TRINO_USER}:{TRINO_PASSWORD}@{TRINO_CONNECTION_PATH}"
+
+# Initialize the SQLDatabase with the connection string
+db = SQLDatabase.from_uri(connection_string)
         
 class TrinoProcessor:
     def __init__(self):
@@ -80,16 +76,21 @@ class TrinoProcessor:
         @tool
         def run_sql_query(sql_query: str) -> str:
             """Runs SQL query and returns the dataset from the database."""
-            cur.execute(sql_query)
-            result = cur.fetchall()
-            return result
+            try:
+                result = db.run(sql_query)
+                return result
+            except Exception as e:
+                return str(e.__cause__)
 
         @tool
         def generate_trino_sql(question: str, chat_id: str) -> str:
             """Generates trino and cyoda specific SQL query based on the user question"""
-            formatted_question = f"{question}. Remove any ; (semi colon) at the end"
-            sql_query = self.ask_question_inner(chat_id, formatted_question)
-            return sql_query
+            try:
+                formatted_question = f"{question}. Remove any ; (semi colon) at the end"
+                sql_query = self.ask_question(chat_id, formatted_question)
+                return sql_query
+            except Exception as e:
+                return str(e.__cause__)
 
         # Create tool instances
         tools = [run_sql_query, generate_trino_sql]
@@ -111,7 +112,7 @@ class TrinoProcessor:
         agent = create_tool_calling_agent(self.llm, tools, prompt)
         self.agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, vectorstore=self.vectorstore)
 
-    def ask_question(self, chat_id, question):
+    def ask_question_agent(self, chat_id, question):
         """
         Asks a question using the RAG chain and returns the answer.
 
@@ -123,12 +124,19 @@ class TrinoProcessor:
             str: The answer to the question.
         """
                 
-        answer = self.agent_executor.invoke({"input": f"{question}. Please use chat_id '{chat_id}'."})
+        answer = self.agent_executor.invoke({"input": f"{question}. Please use chat_id '{chat_id}'. If you get error, fix the query, explain how you fixed it and retry after correcting the query. Max retries = 3"})
         return answer['output']
 
-    def ask_question_inner(self, chat_id, question):
+    def ask_question(self, chat_id, question):
         """
         Internal method to handle the RAG chain question asking.
         """
         sql_query = processor.ask_question(chat_id, question, self.chat_history, self.rag_chain)
         return sql_query
+    
+    def run_query(self, sql_query):
+        try:
+            result = db.run(sql_query)
+            return result
+        except Exception as e:
+            return str(e.__cause__)
