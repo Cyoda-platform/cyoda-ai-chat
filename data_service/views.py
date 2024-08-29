@@ -2,6 +2,7 @@ import logging
 from rest_framework.response import Response
 from rest_framework import status, views
 from .logic.interactor import TrinoInteractor
+from .logic.prompts import RETURN_DATA
 
 logger = logging.getLogger("django")
 interactor = TrinoInteractor()
@@ -11,7 +12,7 @@ interactor = TrinoInteractor()
 class InitialTrinoView(views.APIView):
     """View to handle initial trino requests."""
 
-    def post(self, request, *args, **kwargs):
+    def get(self, request):
         """Handle POST requests to initialize a trino."""
         try:
             logger.info("Starting InitialTrinoView")
@@ -21,7 +22,13 @@ class InitialTrinoView(views.APIView):
                     {"error": "chat_id is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.initialize(chat_id)
+            schema_name = request.query_params.get("schema_name")
+            if not schema_name:
+                return Response(
+                    {"error": "schema_name is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            response = interactor.initialize(chat_id, schema_name)
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error initializing trino: %s", e)
@@ -92,3 +99,17 @@ class ChatTrinoRunQueryView(views.APIView):
                 {"error": "Failed to process trino chat request"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+            
+            
+class ReturnDataView(views.APIView):
+    """
+    View to handle requests to return data.
+    """
+
+    def get(self, request):
+        """
+        Handle GET requests to return data.
+        """
+        return_data = RETURN_DATA
+        logger.info("Returning data")
+        return Response(return_data, status=status.HTTP_200_OK)

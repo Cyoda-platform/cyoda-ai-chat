@@ -60,7 +60,7 @@ class ConnectionsInteractor:
             )
             raise APIException("An error occurred while clearing the context.", e)
 
-    def chat(self, token, chat_id, user_endpoint, return_object, question):
+    def chat(self, token, chat_id, return_object, question):
         # Validate input
         self.validate_chat_input(chat_id, return_object, question)
 

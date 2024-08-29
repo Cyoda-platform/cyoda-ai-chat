@@ -100,7 +100,6 @@ class ChatConnectionView(views.APIView):
                 response = interactor.chat(
                     token,
                     chat_connection_request.id,
-                    chat_connection_request.user_endpoint,
                     chat_connection_request.return_object,
                     chat_connection_request.question,
                 )

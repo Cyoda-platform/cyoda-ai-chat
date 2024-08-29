@@ -91,9 +91,29 @@ class TrinoProcessor:
                 return sql_query
             except Exception as e:
                 return str(e.__cause__)
+            
+        @tool
+        def answer_general_question(question: str, chat_id: str) -> str:
+            """Answer any question. Should be used to answer any non-specific question as it has chat history"""
+            try:
+                formatted_question = f"{question}. Remove any ; (semi colon) at the end"
+                answer = self.ask_question(chat_id, formatted_question)
+                return answer
+            except Exception as e:
+                return str(e.__cause__)
+            
+        @tool
+        def generate_pandas_ai_compatible_dataset(question: str, chat_id: str) -> str:
+            """Formulates pandas compatible dataset"""
+            try:
+                formatted_question = f"{question}. Return dataset in pandas compatible format. Return only the dataset without any comments or additional text."
+                answer = self.ask_question(chat_id, formatted_question)
+                return answer
+            except Exception as e:
+                return str(e.__cause__)
 
         # Create tool instances
-        tools = [run_sql_query, generate_trino_sql]
+        tools = [run_sql_query, generate_trino_sql, answer_general_question, generate_pandas_ai_compatible_dataset]
         self.llm.bind_tools(tools)
         # Define the agent's prompt
         prompt = ChatPromptTemplate.from_messages(
@@ -125,6 +145,7 @@ class TrinoProcessor:
         """
                 
         answer = self.agent_executor.invoke({"input": f"{question}. Please use chat_id '{chat_id}'. If you get error, fix the query, explain how you fixed it and retry after correcting the query. Max retries = 3"})
+        self.ask_question(chat_id, f"Remeber the results of sql execution: {answer['output']}" )
         return answer['output']
 
     def ask_question(self, chat_id, question):
