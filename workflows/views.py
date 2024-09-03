@@ -156,3 +156,34 @@ class GetTransitionsList(views.APIView):
         return Response(interactor.get_next_transitions(token, workflow_id, entity_id, entity_class))
     
     
+class LaunchTransition(views.APIView):
+    """View to handle requests to return data."""
+
+    def put(self, request):
+        """Handle GET requests to return data."""
+        logger.info("Starting GetTransitionsList")
+        token = request.headers.get("Authorization")
+        if not token:
+            return Response(
+                {"error": "Authorization header is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        entity_id = request.query_params.get("entity_id")
+        if not entity_id:
+            return Response(
+                {"error": "entity_id is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        entity_class = request.query_params.get("entity_class")
+        if not entity_class:
+            return Response(
+                {"error": "entity_class is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        transition_name = request.query_params.get("transition_name")
+        if not transition_name:
+            return Response(
+                {"error": "transition_name is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(interactor.launch_transition(token, transition_name, entity_id, entity_class))

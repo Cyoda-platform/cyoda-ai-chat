@@ -120,7 +120,7 @@ class TrinoProcessor:
             [
                 (
                     "system",
-                    "You are a helpful assistant. Make sure to use the generate_trino_sql tool to formulate the query. As it is trino and cyoda specific. Make sure there is no semi-colon at the end of the query. Retry up to 1 time if necessary.",
+                    "You are a helpful assistant. Make sure to use the generate_trino_sql tool to formulate the query. As it is trino and cyoda specific. Make sure there is no semi-colon at the end of the query. Retry up to 2 times if necessary.",
                 ),
                 ("placeholder", "{chat_history}"),
                 ("human", "{input}"),

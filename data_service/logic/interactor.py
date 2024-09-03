@@ -1,10 +1,17 @@
 import logging
 from rest_framework.exceptions import APIException
 from .processor import TrinoProcessor
-
+from common_utils.utils import (
+    get_env_var,
+)
+ENV = get_env_var("ENV")
+WORK_DIR = (
+    get_env_var("WORK_DIR") if ENV.lower() == "local" else get_env_var("GIT_WORK_DIR")
+)
 logger = logging.getLogger("django")
 initialized_requests = set()
 processor = TrinoProcessor()
+LLM_MODEL = get_env_var("LLM_MODEL_TRINO")
 
 
 class TrinoInteractor:
@@ -46,9 +53,17 @@ class TrinoInteractor:
 
     def initialize(self, chat_id, shema_name):
         try:
+            self.clear_context(chat_id)
             result = processor.ask_question_agent(
                 chat_id,
                 f"Execute query \"SELECT * FROM information_schema.columns WHERE table_schema = '{shema_name}' AND column_name != 'id' AND column_name != 'root_id' AND column_name != 'parent_id'\". PLease use chat_id '{chat_id}'",
+            )
+            prompt = ""
+            with open(f"{WORK_DIR}/data/rag/v1/trino/trino.txt", "r") as file:
+                prompt = file.read()
+            processor.ask_question(
+                chat_id,
+                prompt,
             )
             return {"success": True, "message": f"{result}"}
         except Exception as e:

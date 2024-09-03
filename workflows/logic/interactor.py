@@ -1,12 +1,11 @@
 import logging
 import json
 from typing import List, Dict
-from common_utils.utils import get_env_var, send_get_request
+from common_utils.utils import get_env_var, send_get_request, send_put_request
 
 logger = logging.getLogger('django')
 API_URL = get_env_var("API_URL")
-GET_NEXT_TRANSITION_PATH = get_env_var("GET_NEXT_TRANSITION_PATH")
-GET_NEXT_TRANSITION_PATH
+
 class WorkflowsInteractor:
     def __init__(self):
         logger.info("Initializing ConnectionsInteractor...")
@@ -38,3 +37,8 @@ class WorkflowsInteractor:
 
         # Print the resulting JSON
         return result
+    
+    def launch_transition(self, token, transition_name, entity_id, entity_class):
+        launch_transition_path = f"platform-api/entity/transition?entityId={entity_id}&entityClass={entity_class}&transitionName={transition_name}"
+        launch_transition_resp = send_put_request(token, API_URL, launch_transition_path)
+        return launch_transition_resp.status_code == 200
