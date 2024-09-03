@@ -106,7 +106,7 @@ class DataIngestionService:
         model_version = data["model_version"]
         entity_type = data["entity_type"]
 
-        if schema_flag == "true":
+        if schema_flag == True:
             self.save_schema_and_lock(
                 token, data_format, entity_name, model_version, ingestion_data
             )
