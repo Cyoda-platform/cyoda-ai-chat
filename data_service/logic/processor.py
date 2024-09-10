@@ -12,9 +12,6 @@ from rag_processor.chat_history import ChatHistoryService
 from langchain.agents import AgentExecutor, create_tool_calling_agent, tool
 from langchain_core.prompts import ChatPromptTemplate
 
-from trino.dbapi import connect
-from trino.auth import BasicAuthentication
-
 CYODA_AI_CONFIG_GEN_CONNECTIONS_PATH = "trino/"
 QA_SYSTEM_PROMPT = """You are a Trino expert. Given an input question, 
 first create a syntactically correct Trino sql query to run, 
@@ -32,23 +29,28 @@ You can do joins only on indexes!
 LLM_TEMPERATURE = float(get_env_var("LLM_TEMPERATURE_TRINO"))
 LLM_MAX_TOKENS = int(get_env_var("LLM_MAX_TOKENS_TRINO"))
 LLM_MODEL = get_env_var("LLM_MODEL_TRINO")
-decoded_bytes_user = base64.b64decode(get_env_var("TRINO_USER"))
-TRINO_USER = decoded_bytes_user.decode("utf-8")
-decoded_bytes_pwd = base64.b64decode(get_env_var("TRINO_PASSWORD"))
-TRINO_PASSWORD = decoded_bytes_pwd.decode("utf-8")
-TRINO_CONNECTION_PATH=get_env_var("TRINO_CONNECTION_PATH")
-TRINO_CONNECTION_STRING = f"trino://{TRINO_USER}:{TRINO_PASSWORD}@{TRINO_CONNECTION_PATH}"
-TRINO_HOST=get_env_var("TRINO_HOST")
 logger = logging.getLogger('django')
 
 processor = RagProcessor()
 # not tread safe - will be replaced in the future
 trino_chat_history = {}
+TRINO_ENABLED = get_env_var("TRINO_ENABLED")
+ENV = get_env_var("ENV")
+INIT_LLM = get_env_var("INIT_LLM")
 
-connection_string = f"trino://{TRINO_USER}:{TRINO_PASSWORD}@{TRINO_CONNECTION_PATH}"
+if TRINO_ENABLED == "true":
+    decoded_bytes_user = base64.b64decode(get_env_var("TRINO_USER"))
+    TRINO_USER = decoded_bytes_user.decode("utf-8")
+    decoded_bytes_pwd = base64.b64decode(get_env_var("TRINO_PASSWORD"))
+    TRINO_PASSWORD = decoded_bytes_pwd.decode("utf-8")
+    TRINO_CONNECTION_PATH=get_env_var("TRINO_CONNECTION_PATH")
+    TRINO_CONNECTION_STRING = f"trino://{TRINO_USER}:{TRINO_PASSWORD}@{TRINO_CONNECTION_PATH}"
+    TRINO_HOST=get_env_var("TRINO_HOST")
+    connection_string = f"trino://{TRINO_USER}:{TRINO_PASSWORD}@{TRINO_CONNECTION_PATH}"
 
-# Initialize the SQLDatabase with the connection string
-db = SQLDatabase.from_uri(connection_string)
+    db = SQLDatabase.from_uri(connection_string)
+else:
+    db = None  # or handle the case where db is not initialized
         
 class TrinoProcessor:
     def __init__(self):
@@ -112,25 +114,26 @@ class TrinoProcessor:
             except Exception as e:
                 return str(e.__cause__)
 
-        # Create tool instances
-        tools = [run_sql_query, generate_trino_sql, answer_general_question, generate_pandas_ai_compatible_dataset]
-        self.llm.bind_tools(tools)
-        # Define the agent's prompt
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    "You are a helpful assistant. Make sure to use the generate_trino_sql tool to formulate the query. As it is trino and cyoda specific. Make sure there is no semi-colon at the end of the query. Retry up to 2 times if necessary.",
-                ),
-                ("placeholder", "{chat_history}"),
-                ("human", "{input}"),
-                ("placeholder", "{agent_scratchpad}"),
-            ]
-        )
+        if INIT_LLM == "true":
+            # Create tool instances
+            tools = [run_sql_query, generate_trino_sql, answer_general_question, generate_pandas_ai_compatible_dataset]
+            self.llm.bind_tools(tools)
+            # Define the agent's prompt
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        "You are a helpful assistant. Make sure to use the generate_trino_sql tool to formulate the query. As it is trino and cyoda specific. Make sure there is no semi-colon at the end of the query. Retry up to 2 times if necessary.",
+                    ),
+                    ("placeholder", "{chat_history}"),
+                    ("human", "{input}"),
+                    ("placeholder", "{agent_scratchpad}"),
+                ]
+            )
 
-        # Construct the Tools agent
-        agent = create_tool_calling_agent(self.llm, tools, prompt)
-        self.agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, vectorstore=self.vectorstore)
+            # Construct the Tools agent
+            agent = create_tool_calling_agent(self.llm, tools, prompt)
+            self.agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, vectorstore=self.vectorstore)
 
     def ask_question_agent(self, chat_id, question):
         """
@@ -144,8 +147,8 @@ class TrinoProcessor:
             str: The answer to the question.
         """
                 
-        answer = self.agent_executor.invoke({"input": f"{question}. Please use chat_id '{chat_id}'. If you get error, fix the query, explain how you fixed it and retry after correcting the query. Max retries = 3"})
-        self.ask_question(chat_id, f"Remeber the results of sql execution: {answer['output']}" )
+        answer = self.agent_executor.invoke({"input": f"{question}. Please use chat_id '{chat_id}'. If you get error, fix the query, explain how you fixed it and retry after correcting the query. Return the answer to the question. Max retries = 3"})
+        self.ask_question(chat_id, f"Remember the results of sql execution: {answer['output']}" )
         return answer['output']
 
     def ask_question(self, chat_id, question):

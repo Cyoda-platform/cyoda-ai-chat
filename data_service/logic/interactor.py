@@ -38,6 +38,8 @@ class TrinoInteractor:
 
     def chat(self, chat_id, question):
         try:
+            if chat_id not in initialized_requests:
+                return {"success": False, "message": f"{chat_id} is not in initialized requests. PLease initialize first."}
             result = processor.ask_question_agent(chat_id, question)
             return {"success": True, "message": f"{result}"}
         except Exception as e:
@@ -51,12 +53,12 @@ class TrinoInteractor:
         except Exception as e:
             self.log_and_raise_error("An error occurred while processing the chat", e)
 
-    def initialize(self, chat_id, shema_name):
+    def initialize(self, chat_id, schema_name):
         try:
             self.clear_context(chat_id)
             result = processor.ask_question_agent(
                 chat_id,
-                f"Execute query \"SELECT * FROM information_schema.columns WHERE table_schema = '{shema_name}' AND column_name != 'id' AND column_name != 'root_id' AND column_name != 'parent_id'\". PLease use chat_id '{chat_id}'",
+                f"Execute query \"SELECT * FROM information_schema.columns WHERE table_schema = '{schema_name}' AND column_name != 'id' AND column_name != 'root_id' AND column_name != 'parent_id'\". Tell me what you know about this schema after running the query, what tables and columns do they have. Please use chat_id '{chat_id}'",
             )
             prompt = ""
             with open(f"{WORK_DIR}/data/rag/v1/trino/trino.txt", "r") as file:
@@ -65,6 +67,7 @@ class TrinoInteractor:
                 chat_id,
                 prompt,
             )
+            initialized_requests.add(chat_id)
             return {"success": True, "message": f"{result}"}
         except Exception as e:
             self.log_and_raise_error("An error occurred while processing the chat", e)

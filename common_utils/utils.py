@@ -50,6 +50,15 @@ def get_env_var(name: str) -> str:
         logger.warning(f"Environment variable {name} not found.")
     return value
 
+def read_file(file_path: str):
+    """Read and return JSON data from a file."""
+    try:
+        with open(file_path, 'r') as file:
+            return file.read()
+    except Exception as e:
+        logger.error(f"Failed to read JSON file {file_path}: {e}")
+        raise
+
 def read_json_file(file_path: str):
     try:
         with open(file_path, "r") as file:
@@ -118,4 +127,23 @@ def send_put_request(token: str, api_url: str, path: str, data=None, json=None) 
         raise
     except Exception as err:
         logger.error(f"Error during PUT request to {url}: {err}")
+        raise
+
+def send_delete_request(token: str, api_url: str, path: str) -> Optional[requests.Response]:
+    url = f"{api_url}/{path}"
+    token = f"Bearer {token}" if not token.startswith('Bearer') else token
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"{token}",
+    }
+    try:
+        response = requests.delete(url, headers=headers)
+        response.raise_for_status()  # Raise an error for bad status codes
+        logger.info(f"GET request to {url} successful.")
+        return response
+    except requests.exceptions.HTTPError as http_err:
+        logger.error(f"HTTP error during GET request to {url}: {http_err}")
+        raise
+    except Exception as err:
+        logger.error(f"Error during GET request to {url}: {err}")
         raise

@@ -12,5 +12,6 @@ urlpatterns = [
     path('save-workflow', views.SaveWorkflowDataView.as_view(), name='save-workflow'),
     path('next-transitions', views.GetTransitionsList.as_view(), name='next-transitions'),
     path('launch-transition', views.LaunchTransition.as_view(), name='launch-transition'),
+    path('generate-workflow', views.GenerateWorkflowConfigView.as_view(), name='generate-workflow'),
 
 ]

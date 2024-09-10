@@ -1,11 +1,13 @@
 from connections.logic.prompts import COLLECTIONS_DEFAULT_PROMPTS
 from mappings.logic.prompts import MAPPINGS_DEFAULT_PROMPTS
+from workflows.logic.prompts import WORKFLOWS_DEFAULT_PROMPTS
 from enum import Enum
 
 
 class PromptType(Enum):
     CONNECTIONS = "connections"
     MAPPINGS = "mappings"
+    WORKFLOW = "workflow"
 
 
 class PromptService:
@@ -20,6 +22,9 @@ class PromptService:
         # Initialize the 'mappings' key with an empty dictionary and assign the 'default' value
         self.prompts[PromptType.MAPPINGS.value] = {}
         self.prompts[PromptType.MAPPINGS.value]["default"] = MAPPINGS_DEFAULT_PROMPTS
+        
+        self.prompts[PromptType.MAPPINGS.value] = {}
+        self.prompts[PromptType.MAPPINGS.value]["default"] = WORKFLOWS_DEFAULT_PROMPTS
 
     def add_prompt(self, topic, user, prompt):
         if topic not in self.prompts:
