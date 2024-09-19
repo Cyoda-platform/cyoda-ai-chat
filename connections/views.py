@@ -1,30 +1,3 @@
-"""
-This module contains the views for handling various connections and
-data retrieval in a Django application.
-
-Classes:
-- InitialConnectionView: Handles initial connection requests.
-- ChatConnectionClearView: Clears chat connections.
-- ChatConnectionView: Handles chat connection requests.
-- ReturnDataView: Returns data.
-
-Each view class has a `post` method for handling POST requests
-and a `get` method for handling GET requests.
-
-Module Dependencies:
-- logging
-- Django's HttpResponse, JsonResponse, and HttpResponseServerError
-- Django's View and method_decorator
-- Django's csrf_exempt decorator
-- MessageSerializer from .logic.serializers
-- ConnectionsInteractor from .logic.interactor
-- InitialConnectionRequestDTO and ChatConnectionRequestDTO from .logic.dto
-- RETURN_DATA from .logic.prompts
-
-Note: The views are decorated with csrf_exempt to allow for cross-site request forgery. 
-This should be handled properly in a production environment.
-"""
-
 import logging
 from rest_framework import status, views
 from rest_framework.response import Response
@@ -37,11 +10,11 @@ from .logic.serializers import InitialConnectionSerializer, ChatConnectionSerial
 from .logic.interactor import ConnectionsInteractor
 from .logic.ingestion_service import DataIngestionService
 from .logic.prompts import RETURN_DATA
+from .logic.processor import ConnectionProcessor
 
 logger = logging.getLogger("django")
 
-interactor = ConnectionsInteractor()
-
+interactor = ConnectionsInteractor(ConnectionProcessor())
 ingestionService = DataIngestionService()
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
 

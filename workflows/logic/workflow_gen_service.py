@@ -1,22 +1,19 @@
 import logging
 import json
-from .processor import WorkflowProcessor
 from common_utils.utils import (
-    get_env_var,
     send_get_request,
     send_post_request,
     send_delete_request,
     read_json_file
 )
+from common_utils.config import (
+    API_URL,
+    ENV,
+    WORK_DIR
+)
 
 logger = logging.getLogger('django')
-
-processor = WorkflowProcessor()
 initialized_requests = set()
-
-API_URL = get_env_var("API_URL")
-ENV = get_env_var("ENV")
-WORK_DIR = get_env_var("WORK_DIR") if ENV.lower() == "local" else get_env_var("GIT_WORK_DIR")
 
 
 class ConfigGenerationError(Exception):
@@ -50,7 +47,8 @@ class WorkflowGenerationService:
         self._update_criteria(token, workflow_id, data, criteria_maps['id_map'], class_name)
         self._update_processes(token, workflow_id, data, process_maps['id_map'], class_name)
         self._update_states(token, workflow_id, data, state_maps['id_map'], class_name)
-        self._update_transitions(token, data, state_maps['id_map'], criteria_maps['id_map'], process_maps['id_map'], workflow_id, class_name)
+        self._update_transitions(token, data, state_maps['id_map'], criteria_maps['id_map'], process_maps['id_map'],
+                                 workflow_id, class_name)
 
         return workflow_id
 
@@ -58,13 +56,15 @@ class WorkflowGenerationService:
         """Create a new workflow by posting data from a JSON file."""
         workflow_data = read_json_file(file_path)
         workflow_data.update({"name": data["name"], "entityClassName": class_name})
-        response = send_post_request(token, API_URL, "platform-api/statemachine/persisted/workflows", json.dumps(workflow_data))
+        response = send_post_request(token, API_URL, "platform-api/statemachine/persisted/workflows",
+                                     json.dumps(workflow_data))
         self._check_response(response, "POST")
         return response.json()['id']
 
     def _retrieve_existing_states(self, token, workflow_id):
         """Retrieve and map existing states for a workflow."""
-        response = send_get_request(token, API_URL, f"platform-api/statemachine/persisted/workflows/{workflow_id}/states")
+        response = send_get_request(token, API_URL,
+                                    f"platform-api/statemachine/persisted/workflows/{workflow_id}/states")
         self._check_response(response, "GET")
         return self._create_mapping(response.json(), 'Data')
 
@@ -100,27 +100,33 @@ class WorkflowGenerationService:
         for name, description in states.items():
             if name not in existing_state_id_map:
                 state_template.update({"name": name, "description": description, "entityClassName": class_name})
-                response = send_post_request(token, API_URL, f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions/{empty_transition_id}/states", json.dumps(state_template))
+                response = send_post_request(token, API_URL,
+                                             f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions/{empty_transition_id}/states",
+                                             json.dumps(state_template))
                 self._check_response(response, "POST")
                 existing_state_id_map[name] = response.json()["Data"]["id"]
 
-        send_delete_request(token, API_URL, f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions/{empty_transition_id}")
+        send_delete_request(token, API_URL,
+                            f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions/{empty_transition_id}")
 
     def _update_criteria(self, token, workflow_id, data, existing_criteria_id_map, class_name):
         """Update criteria based on provided transitions."""
-        criteria = {item['criteria']['name']: item['criteria']['description'] for item in data['transitions'] if 'criteria' in item}
+        criteria = {item['criteria']['name']: item['criteria']['description'] for item in data['transitions'] if
+                    'criteria' in item}
         criteria_template = read_json_file(f"{WORK_DIR}/data/v1/workflows/criteria.json")
 
         for name, description in criteria.items():
             if name not in existing_criteria_id_map:
                 criteria_template.update({"name": name, "description": description, "entityClassName": class_name})
-                response = send_post_request(token, API_URL, "platform-api/statemachine/persisted/criteria", json.dumps(criteria_template))
+                response = send_post_request(token, API_URL, "platform-api/statemachine/persisted/criteria",
+                                             json.dumps(criteria_template))
                 self._check_response(response, "POST")
                 existing_criteria_id_map[name] = response.json()["id"]
 
     def _update_processes(self, token, workflow_id, data, existing_process_id_map, class_name):
         """Update processes based on provided transitions."""
-        processes = {item['process']['name']: item['process']['description'] for item in data['transitions'] if 'process' in item}
+        processes = {item['process']['name']: item['process']['description'] for item in data['transitions'] if
+                     'process' in item}
         process_template = read_json_file(f"{WORK_DIR}/data/v1/workflows/process.json")
 
         for name, description in processes.items():
@@ -129,11 +135,13 @@ class WorkflowGenerationService:
                 for param in process_template['parameters']:
                     if param['name'] == "Tags for filtering calculation nodes (separated by ',' or ';')":
                         param['value']['value'] = data['name']
-                response = send_post_request(token, API_URL, "platform-api/statemachine/persisted/processes", json.dumps(process_template))
+                response = send_post_request(token, API_URL, "platform-api/statemachine/persisted/processes",
+                                             json.dumps(process_template))
                 self._check_response(response, "POST")
                 existing_process_id_map[name] = response.json()["id"]
 
-    def _update_transitions(self, token, data, existing_state_id_map, existing_criteria_id_map, existing_process_id_map, workflow_id, class_name):
+    def _update_transitions(self, token, data, existing_state_id_map, existing_criteria_id_map, existing_process_id_map,
+                            workflow_id, class_name):
         """Update transitions based on provided data."""
         transition_template = read_json_file(f"{WORK_DIR}/data/v1/workflows/transition.json")
         save_transition_path = f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions"
@@ -156,7 +164,9 @@ class WorkflowGenerationService:
         """Create an empty transition to use as a placeholder."""
         transition_data = read_json_file(f"{WORK_DIR}/data/v1/workflows/initial_transition.json")
         transition_data.update({"workflowId": workflow_id, "entityClassName": class_name})
-        response = send_post_request(token, API_URL, f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions", json.dumps(transition_data))
+        response = send_post_request(token, API_URL,
+                                     f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions",
+                                     json.dumps(transition_data))
         self._check_response(response, "POST")
         return response.json()['Data']['id']
 

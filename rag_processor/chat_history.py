@@ -1,101 +1,42 @@
 from langchain.schema import HumanMessage
 
+import threading
 
 class ChatHistoryService:
-    """
-    A class to manage chat history for a chat service.
+    _instance = None
+    _lock = threading.Lock()  # Lock for thread safety
 
-    ...
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            with cls._lock:  # Ensure only one thread can create the instance
+                if cls._instance is None:
+                    cls._instance = super(ChatHistoryService, cls).__new__(cls)
+                    cls._instance.chat_history = {}
+        return cls._instance
 
-    Attributes
-    ----------
-    chat_history : dict
-        a dictionary to store chat history, where keys are chat IDs and values are lists of messages
-
-    Methods
-    -------
-    add_to_chat_history(chat_id, question, message):
-        Adds a question and a message to the chat history for a given chat ID.
-
-    clear_chat_history(chat_id):
-        Clears the chat history for a given chat ID.
-
-    get_chat_history(chat_id):
-        Retrieves the chat history for a given chat ID.
-
-    chat_history_exists(chat_id):
-        Checks if chat history exists for a given chat ID.
-    """
-
-    def __init__(self, chat_history):
-        """
-        Constructs all the necessary attributes for the ChatHistoryService object.
-
-        Parameters
-        ----------
-            chat_history : dict
-                a dictionary to store chat history, where keys are chat IDs and values are lists of messages
-        """
-        self.chat_history = chat_history
+    def __init__(self):
+        # Empty because initialization is done in __new__
+        pass
 
     def add_to_chat_history(self, chat_id, question, message):
-        """
-        Adds a question and a message to the chat history for a given chat ID.
-
-        Parameters
-        ----------
-            chat_id : str
-                the ID of the chat
-            question : str
-                the question asked by the user
-            message : HumanMessage
-                the message to be added to the chat history
-        """
-        if chat_id in self.chat_history:
-            self.chat_history[chat_id].extend([HumanMessage(content=question), message])
-        else:
-            self.chat_history[chat_id] = [HumanMessage(content=question), message]
+        with self._lock:
+            if chat_id in self.chat_history:
+                self.chat_history[chat_id].extend([HumanMessage(content=question), message])
+            else:
+                self.chat_history[chat_id] = [HumanMessage(content=question), message]
 
     def clear_chat_history(self, chat_id):
-        """
-        Clears the chat history for a given chat ID.
-
-        Parameters
-        ----------
-            chat_id : str
-                the ID of the chat
-        """
-        if chat_id in self.chat_history:
-            del self.chat_history[chat_id]
+        with self._lock:
+            if chat_id in self.chat_history:
+                del self.chat_history[chat_id]
 
     def get_chat_history(self, chat_id):
-        """
-        Retrieves the chat history for a given chat ID.
-
-        Parameters
-        ----------
-            chat_id : str
-                the ID of the chat
-
-        Returns
-        -------
-        list
-            a list of messages in the chat history for the given chat ID, or an empty list if no history exists
-        """
-        return self.chat_history.get(chat_id, [])
+        with self._lock:
+            return self.chat_history.get(chat_id, [])
 
     def chat_history_exists(self, chat_id):
-        """
-        Checks if chat history exists for a given chat ID.
+        with self._lock:
+            return chat_id in self.chat_history
 
-        Parameters
-        ----------
-            chat_id : str
-                the ID of the chat
-
-        Returns
-        -------
-        bool
-            True if chat history exists for the given chat ID, False otherwise
-        """
-        return chat_id in self.chat_history
+# Create a single instance
+chat_history_service = ChatHistoryService()

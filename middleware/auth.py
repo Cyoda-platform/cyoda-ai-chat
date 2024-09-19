@@ -1,20 +1,15 @@
 import logging
-import requests
 import re
+import requests
 from django.http import HttpResponseForbidden
-from dotenv import load_dotenv
-
-from common_utils.utils import get_env_var
-
-# Load environment variables
-load_dotenv()
-
-# Constants
-API_URL = get_env_var("API_URL")
-CYODA_AUTH_ENDPOINT = get_env_var("CYODA_AUTH_ENDPOINT")
-ENABLE_AUTH = get_env_var("ENABLE_AUTH")
+from common_utils.config import (
+    ENABLE_AUTH,
+    CYODA_AUTH_ENDPOINT,
+    API_URL
+)
 
 logger = logging.getLogger('django')
+
 
 class TokenValidationMiddleware:
     def __init__(self, get_response):

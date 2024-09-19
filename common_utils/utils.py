@@ -147,3 +147,43 @@ def send_delete_request(token: str, api_url: str, path: str) -> Optional[request
     except Exception as err:
         logger.error(f"Error during GET request to {url}: {err}")
         raise
+
+
+def validate_and_parse_json(
+            processor,
+            chat_id: str,
+            data: str,
+            schema_path: str,
+            max_retries: int,
+    ):
+        try:
+            parsed_data = parse_json(data)
+        except Exception as e:
+            logger.error(f"Failed to parse JSON: {e}")
+            raise ValueError("Invalid JSON data provided.") from e
+
+        attempt = 0
+        while attempt <= max_retries:
+            try:
+                validate_result(parsed_data, schema_path)
+                logger.info(f"JSON validation successful on attempt {attempt + 1}.")
+                attempt += 1
+                return json.loads(parsed_data)
+            except jsonschema.exceptions.ValidationError as e:
+                attempt += 1
+                logger.warning(
+                    f"JSON validation failed on attempt {attempt + 1} with error: {e.message}"
+                )
+                if attempt < max_retries:
+                    question = (
+                        f"Retry the last step. JSON validation failed with error: {e.message}. "
+                        "Return only the DTO JSON."
+                    )
+                    retry_result = processor.ask_question(chat_id, question)
+                    parsed_data = parse_json(retry_result)
+            except Exception as e:
+                logger.error("Maximum retry attempts reached. Validation failed.")
+            finally:
+                attempt += 1
+        logger.error("Maximum retry attempts reached. Validation failed.")
+        raise ValueError("JSON validation failed after retries.")

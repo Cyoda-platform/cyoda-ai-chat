@@ -1,21 +1,22 @@
 import logging
-from .processor import ConnectionProcessor
-from common_utils.utils import get_env_var, send_get_request, send_post_request, send_put_request
+
+from .ingestion_service import DataIngestionError
+from common_utils.utils import send_get_request, send_post_request, send_put_request
+from common_utils.config import (
+    API_URL,
+    GET_CONNECTION_CONFIG_PATH,
+    POST_CHECK_CONNECTION_PATH,
+    POST_SAVE_DATA_PATH,
+    POST_SAVE_SCHEMA_PATH,
+)
 
 logger = logging.getLogger('django')
 
 
-processor = ConnectionProcessor()
 # todo not thread safe - will replace later
 initialized_requests = set()
 
-API_URL = get_env_var("API_URL")
-GET_CONNECTION_CONFIG_PATH = get_env_var("GET_CONNECTION_CONFIG_PATH")
-POST_CHECK_CONNECTION_PATH = get_env_var("POST_CHECK_CONNECTION_PATH")
-POST_SAVE_DATA_PATH = get_env_var("POST_SAVE_DATA_PATH")
-POST_SAVE_SCHEMA_PATH = get_env_var("POST_SAVE_SCHEMA_PATH")
-  
-    
+
 class ConfiGenerationError(Exception):
     """Custom exception class for errors."""
     pass
@@ -25,7 +26,6 @@ class ConfiGenerationService:
     def __init__(self):
         logger.info("Initializing...")
 
-
     def ingest_data(self, token: str, request):
         try:
             ds_id = request.query_params.get("datasource_id")
@@ -34,13 +34,11 @@ class ConfiGenerationService:
             ds_data = self.get_datasource_data(token, ds_id)
             endpoint, connection = self.get_endpoint_and_connection(ds_data, operation)
             ingestion_data = self.process_endpoint(token, endpoint, connection)
-
             self.ingest_data_based_on_schema(token, request, ingestion_data)
 
         except Exception as e:
             logger.error(f"An error occurred during data ingestion: {str(e)}")
             raise DataIngestionError(f"Data ingestion failed: {str(e)}") from e
-
 
     def get_datasource_data(self, token: str, ds_id: str) -> dict:
         """Fetches and returns the datasource data."""
@@ -48,7 +46,6 @@ class ConfiGenerationService:
         if ds_response and ds_response.status_code == 200:
             return ds_response.json()
         raise DataIngestionError("Failed to retrieve datasource configuration")
-
 
     def get_endpoint_and_connection(self, ds_data: dict, operation: str):
         """Extracts and returns the endpoint and connection based on the operation."""
@@ -62,7 +59,6 @@ class ConfiGenerationService:
         connection = ds_data.get("connections", [{}])[connection_idx]
 
         return endpoint, connection
-
 
     def process_endpoint(self, token: str, endpoint: dict, connection: dict) -> dict:
         """Processes the endpoint and returns the ingestion data."""
@@ -82,7 +78,6 @@ class ConfiGenerationService:
 
         raise DataIngestionError("Failed to get a valid response from POST request")
 
-
     def ingest_data_based_on_schema(self, token: str, request, ingestion_data: dict):
         """Handles the data ingestion based on the schema flag."""
         schema_flag = request.query_params.get("schema") == "true"
@@ -96,8 +91,8 @@ class ConfiGenerationService:
         else:
             self.save_data(token, data_format, entity_type, entity_name, model_version, ingestion_data)
 
-
-    def save_schema_and_lock(self, token: str, data_format: str, entity_name: str, model_version: str, ingestion_data: dict):
+    def save_schema_and_lock(self, token: str, data_format: str, entity_name: str, model_version: str,
+                             ingestion_data: dict):
         """Saves the schema and locks it."""
         ingestion_response = send_post_request(
             token=token,
@@ -122,8 +117,8 @@ class ConfiGenerationService:
         else:
             raise DataIngestionError("Failed to save the schema")
 
-
-    def save_data(self, token: str, data_format: str, entity_type: str, entity_name: str, model_version: str, ingestion_data: dict):
+    def save_data(self, token: str, data_format: str, entity_type: str, entity_name: str, model_version: str,
+                  ingestion_data: dict):
         """Saves the ingestion data."""
         ingestion_response = send_post_request(
             token=token,
@@ -137,4 +132,3 @@ class ConfiGenerationService:
             logger.info("Ingestion succeeded")
         else:
             raise DataIngestionError("Failed to ingest data")
-

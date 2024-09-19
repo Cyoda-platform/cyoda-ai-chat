@@ -1,16 +1,11 @@
 import json
 import logging
-
 from rest_framework.exceptions import APIException
-
 from common_utils.utils import parse_json
 from .processor import MappingProcessor
 from . import prompts
 
 logger = logging.getLogger('django')
-
-# Initialize the processor and set the logging level
-processor = MappingProcessor()
 
 # Sets to keep track of initialized script and columns, not thread-safe - will be replaced later
 initialized_mappings = set()
@@ -21,11 +16,12 @@ class MappingsInteractor:
     A class that interacts with mappings for a chat system.
     """
 
-    def __init__(self):
+    def __init__(self, processor: MappingProcessor):
         """
         Initializes the MappingsInteractor instance.
         """
         logger.info("Initializing MappingsInteractor...")
+        self.processor = processor
 
     def initialize_mapping(self, chat_id, ds_input, entity):
         """
@@ -41,9 +37,7 @@ class MappingsInteractor:
         )
         
         mappings_cache[chat_id] = ds_input
-
         questions = [
-            #prompts.MAPPINGS_INITIAL_PROMPT.format(ds_input, entity, entity),
             prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity, entity, ds_input),
         ]
 
@@ -60,10 +54,9 @@ class MappingsInteractor:
         return_string = prompts.RETURN_DATA.get(return_object, "")
         ai_question = f"{question}. {current_script} {return_string}"
         logger.info("Asking question: %s", ai_question)
-        #todo
         if return_object == prompts.Keys.TRANSFORMERS.value:
             return self._process_transformers(question)
-        result = processor.ask_question(chat_id, ai_question)
+        result = self.processor.ask_question(chat_id, ai_question)
         return self._process_return_object(chat_id, return_object, result)
 
     def clear_context(self, chat_id):
@@ -73,7 +66,7 @@ class MappingsInteractor:
         :param chat_id: The ID of the chat session.
         :return: A Response indicating the result of the context clearing.
         """
-        processor.chat_history.clear_chat_history(chat_id)
+        self.processor.chat_history.clear_chat_history(chat_id)
         items_to_remove = [initialized_mappings]
         for item in items_to_remove:
             self._remove_from_set(chat_id, item)
@@ -91,7 +84,7 @@ class MappingsInteractor:
         if chat_id not in initialized_set:
             try:
                 for question in questions:
-                    result = processor.ask_question(chat_id, question)
+                    result = self.processor.ask_question(chat_id, question)
                     logger.info(result)
                 initialized_set.add(chat_id)
                 return {"answer": f"{chat_id} initialization complete"}
@@ -102,7 +95,6 @@ class MappingsInteractor:
                 return {"error": str(e)}
 
     def _process_return_object(self, chat_id, return_object, result):
-        response_data = {}
         if return_object in [
             prompts.Keys.RANDOM.value,
             prompts.Keys.CODE.value,
@@ -126,10 +118,8 @@ class MappingsInteractor:
     def _process_script_return(self, chat_id, script_result):
         try:
             script_result = parse_json(script_result)
-            paths_data = json.loads(mappings_cache[chat_id])
-            input_src_paths = self.generate_paths(paths_data)
             script = {
-                    "script": {"body": script_result, "inputSrcPaths": input_src_paths}
+                    "script": {"body": script_result, "inputSrcPaths": []}
             }
             return script
         except json.JSONDecodeError as e:
@@ -160,7 +150,7 @@ class MappingsInteractor:
 
     def _get_input_scr_params(self, chat_id):
         refine_question = prompts.SCRIPT_REFINE_PROMPT
-        refine_result = processor.ask_question(chat_id, refine_question)
+        refine_result = self.processor.ask_question(chat_id, refine_question)
         logger.info("Refined question: %s", refine_result)
         try:
             input_src_paths = json.loads(refine_result)

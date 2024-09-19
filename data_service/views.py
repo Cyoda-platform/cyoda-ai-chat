@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status, views
 from .logic.interactor import TrinoInteractor
 from .logic.prompts import RETURN_DATA
+from .logic.processor import TrinoProcessor
 
 logger = logging.getLogger("django")
-interactor = TrinoInteractor()
+interactor = TrinoInteractor(TrinoProcessor())
 
 
 # Views

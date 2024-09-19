@@ -1,31 +1,32 @@
 import logging
-from .processor import ConnectionProcessor
 
 from common_utils.utils import (
-    get_env_var,
     send_get_request,
     send_post_request,
     send_put_request,
 )
 
+from common_utils.config import (
+    API_URL,
+    GET_CONNECTION_CONFIG_PATH,
+    POST_CHECK_CONNECTION_PATH,
+    POST_SAVE_DATA_PATH,
+    POST_SAVE_SCHEMA_PATH,
+)
+
 logger = logging.getLogger("django")
 
-processor = ConnectionProcessor()
+
 # todo not thread safe - will replace later
 initialized_requests = set()
-
-
-API_URL = get_env_var("API_URL")
-GET_CONNECTION_CONFIG_PATH = get_env_var("GET_CONNECTION_CONFIG_PATH")
-POST_CHECK_CONNECTION_PATH = get_env_var("POST_CHECK_CONNECTION_PATH")
-POST_SAVE_DATA_PATH = get_env_var("POST_SAVE_DATA_PATH")
-POST_SAVE_SCHEMA_PATH = get_env_var("POST_SAVE_SCHEMA_PATH")
 
 
 class DataIngestionError(Exception):
     """Custom exception class for data ingestion errors."""
 
-    pass
+    def __init__(self, message, error_code=None):
+        super().__init__(message)
+        self.error_code = error_code
 
 
 class DataIngestionService:

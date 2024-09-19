@@ -1,14 +1,21 @@
 import logging
 import json
 import base64
-import jsonschema
 import re
-
 import httpx
 from rest_framework.exceptions import APIException
 
 from common_utils.utils import (
-    get_env_var, send_get_request, send_put_request, validate_result, parse_json
+    send_get_request,
+    send_put_request,
+    validate_and_parse_json
+)
+from common_utils.config import (
+    API_URL,
+    WORK_DIR,
+    MAX_RETRIES_GENERATE_WORKFLOW,
+    WORKFLOW_SCHEMA_PATH,
+    WORKFLOW_TRANSITIONS_SCHEMA_PATH
 )
 from .workflow_gen_service import WorkflowGenerationService
 from .processor import WorkflowProcessor
@@ -17,25 +24,19 @@ from . import prompts
 # Initialize logging
 logger = logging.getLogger('django')
 
-# Configuration
-API_URL = get_env_var("API_URL")
-ENV = get_env_var("ENV")
-WORK_DIR = get_env_var("WORK_DIR") if ENV.lower() == "local" else get_env_var("GIT_WORK_DIR")
-MAX_RETRIES_GENERATE_WORKFLOW = int(get_env_var("MAX_RETRIES_GENERATE_WORKFLOW"))
-
 # Services
-workflow_generation_service = WorkflowGenerationService()
-processor = WorkflowProcessor()
 initialized_requests = set()
 
 
 class WorkflowsInteractor:
-    def __init__(self):
+    def __init__(self, processor: WorkflowProcessor, workflow_generation_service: WorkflowGenerationService):
         logger.info("Initializing WorkflowsInteractor...")
+        self.workflow_generation_service = workflow_generation_service
+        self.processor = processor
 
     def clear_context(self, chat_id):
         try:
-            processor.chat_history.clear_chat_history(chat_id)
+            self.processor.chat_history.clear_chat_history(chat_id)
             if chat_id in initialized_requests:
                 initialized_requests.remove(chat_id)
                 return {"message": f"Chat context with id {chat_id} cleared."}
@@ -92,7 +93,7 @@ class WorkflowsInteractor:
                 workflow_id = self._generate_transitions_from_text(chat_id, token, question, class_name, workflow_id)
                 return {"success": True,
                         "message": f"Workflow id = {workflow_id}"}
-            result = processor.ask_question(chat_id, question)
+            result = self.processor.ask_question(chat_id, question)
             return {"success": True, "message": f"{result}"}
 
         except Exception as e:
@@ -109,31 +110,35 @@ class WorkflowsInteractor:
             return {"success": False, "message": "No valid URL specified"}
 
         image_data = base64.b64encode(httpx.get(image_url).content).decode("utf-8")
-        data = processor.ask_question_with_image(chat_id, updated_question, image_data)
-        data = self._validate_and_parse_json(chat_id, data, f"{WORK_DIR}/data/v1/workflows/workflow_schema.json")
+        data = self.processor.ask_question_with_image(chat_id, updated_question, image_data)
+        data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
+                                       MAX_RETRIES_GENERATE_WORKFLOW)
         return self.save_workflow_entity(token, data, class_name)
 
     def _generate_workflow_from_image_file(self, chat_id, token, question, class_name, image_file):
         encoded_image_data = base64.b64encode(image_file.read()).decode('utf-8')
-        data = processor.ask_question_with_image(chat_id, question, encoded_image_data)
-        data = self._validate_and_parse_json(chat_id, data, f"{WORK_DIR}/data/v1/workflows/workflow_schema.json")
+        data = self.processor.ask_question_with_image(chat_id, question, encoded_image_data)
+        data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
+                                       MAX_RETRIES_GENERATE_WORKFLOW)
         return self.save_workflow_entity(token, data, class_name)
 
     def _generate_workflow_from_text(self, chat_id, token, question, class_name):
-        data = processor.ask_question(chat_id, f"{question}. Class name is {class_name}")
-        data = self._validate_and_parse_json(chat_id, data, f"{WORK_DIR}/data/v1/workflows/workflow_schema.json")
+        data = self.processor.ask_question(chat_id, f"{question}. Class name is {class_name}")
+        data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
+                                       MAX_RETRIES_GENERATE_WORKFLOW)
         return self.save_workflow_entity(token, data, class_name)
 
     def _generate_transitions_from_text(self, chat_id, token, question, class_name, workflow_id):
         workflow_transitions_raw = send_get_request(token, API_URL,
                                                     f"platform-api/statemachine/persisted/workflows/{workflow_id}/transitions")
         existing_transitions = self._get_existing_transitions(workflow_transitions_raw.content)
-        data = processor.ask_question(
+        data = self.processor.ask_question(
             chat_id,
             f"{question}. Class name is {class_name}. Return only a json array of required transitions. Take into account that these transitions already exist: {json.dumps(existing_transitions)}. Return type = array"
         )
-        new_transitions = self._validate_and_parse_json(chat_id, data,
-                                                        f"{WORK_DIR}/data/v1/workflows/workflow_transitions_schema.json")
+        new_transitions = validate_and_parse_json(self.processor, chat_id, data,
+                                                  f"{WORK_DIR}/{WORKFLOW_TRANSITIONS_SCHEMA_PATH}",
+                                                  MAX_RETRIES_GENERATE_WORKFLOW)
         existing_names = set(transition["name"] for transition in existing_transitions)
         filtered_new_transitions = [transition for transition in new_transitions if
                                     transition["name"] not in existing_names]
@@ -161,10 +166,11 @@ class WorkflowsInteractor:
         return None, question
 
     def save_workflow_entity(self, token, data, class_name):
-        return workflow_generation_service.generate_workflow_from_json(token, data, class_name)
+        return self.workflow_generation_service.generate_workflow_from_json(token, data, class_name)
 
     def _save_workflow_transitions(self, token, data, class_name, workflow_id):
-        return workflow_generation_service.generate_workflow_transitions_from_json(token, data, class_name, workflow_id)
+        return self.workflow_generation_service.generate_workflow_transitions_from_json(token, data, class_name,
+                                                                                        workflow_id)
 
     def get_next_transitions(self, token, workflow_id, entity_id, entity_class):
         next_transitions = send_get_request(token, API_URL,
@@ -191,53 +197,4 @@ class WorkflowsInteractor:
 
     def handle_additional_sources(self, question):
         urls = question.split(", ")
-        return processor.load_additional_sources(urls)
-
-    def _validate_and_parse_json(
-            self,
-            chat_id: str,
-            data: str,
-            schema_path: str,
-            max_retries: int = MAX_RETRIES_GENERATE_WORKFLOW,
-    ):
-        """
-        Parses and validates JSON data against a given schema. If validation fails,
-        retries the operation up to `max_retries` times by asking the processor to retry.
-
-        :param data: The JSON data as a string.
-        :param schema_path: The path to the JSON schema file.
-        :param max_retries: The maximum number of retries if validation fails.
-        :return: Parsed JSON data as a dictionary.
-        :raises ValueError: If JSON validation fails after the maximum retries.
-        """
-        try:
-            parsed_data = parse_json(data)
-        except Exception as e:
-            logger.error(f"Failed to parse JSON: {e}")
-            raise ValueError("Invalid JSON data provided.") from e
-
-        attempt = 0
-        while attempt <= max_retries:
-            try:
-                validate_result(parsed_data, schema_path)
-                logger.info(f"JSON validation successful on attempt {attempt + 1}.")
-                attempt += 1
-                return json.loads(parsed_data)
-            except jsonschema.exceptions.ValidationError as e:
-                attempt += 1
-                logger.warning(
-                    f"JSON validation failed on attempt {attempt + 1} with error: {e.message}"
-                )
-                if attempt < max_retries:
-                    question = (
-                        f"Retry generating workflow. JSON validation failed with error: {e.message}. "
-                        "Return only the DTO JSON."
-                    )
-                    retry_result = processor.ask_question(chat_id, question)
-                    parsed_data = parse_json(retry_result)
-            except Exception as e:
-                logger.error("Maximum retry attempts reached. Validation failed.")
-            finally:
-                attempt += 1
-        logger.error("Maximum retry attempts reached. Validation failed.")
-        raise ValueError("JSON validation failed after retries.")
+        return self.processor.load_additional_sources(urls)

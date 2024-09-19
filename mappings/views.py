@@ -1,15 +1,15 @@
 import logging
 from rest_framework.response import Response
 from rest_framework import status, views
+
+from .logic.processor import MappingProcessor
 from .logic.prompts import RETURN_DATA
 from .logic.dto import InitialMappingRequestDTO, ChatMappingRequestDTO
 from .logic.serializers import InitialMappingSerializer, ChatMappingSerializer
 from .logic.interactor import MappingsInteractor
 
-
 logger = logging.getLogger('django')
-interactor = MappingsInteractor()
-
+interactor = MappingsInteractor(MappingProcessor())
 
 # Views
 class InitialMappingView(views.APIView):
