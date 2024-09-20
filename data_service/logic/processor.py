@@ -8,7 +8,9 @@ from common_utils.config import (
     TRINO_ENABLED,
     INIT_LLM,
     TRINO_CONNECTION_STRING,
-    CYODA_AI_CONFIG_GEN_TRINO_PATH
+    CYODA_AI_CONFIG_GEN_TRINO_PATH,
+    WORK_DIR,
+    TRINO_PROMPT_PATH
 )
 from langchain_community.utilities.sql_database import SQLDatabase
 
@@ -20,19 +22,22 @@ from langchain_core.prompts import ChatPromptTemplate
 QA_SYSTEM_PROMPT = """You are a Trino expert. Given an input question, 
 first analyze if it is a general question or it requires interaction with trino. 
 If it doesn't require interaction with trino - just answer the question. 
-For exampl if you are asked to provide sql - generate sql, return it, but do not execute it.
+For example if you are asked to provide sql - generate sql, return it, but do not execute it.
 Finish.
 Else if you need interation with trino: 
-First create a syntactically correct Trino SQL query to run, 
+First analyze the required schema and tables. 
+Then get the rules of trino sql query writing.
+Then create a syntactically correct Trino SQL query to run, 
 then look at the results of the query and return the answer to the input question.
 Unless the user specifies in the question a specific number of examples to obtain, 
 query for at most 100 results using the LIMIT clause as per SQL.
 You can order the results to return the most informative data in the database.
-You must query only the columns that are needed to answer the question. 
 Wrap each column name in double quotes (") to denote them as delimited identifiers.
 Pay attention to use only the column names you can see in the tables below. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.
 Pay attention to use date('now') function to get the current date, if the question involves "today".
 You can do joins only on indexes!
+If you have any errors - max retries is 3.
+Always return all correct sql queries you used.
 {context}"""
 
 logger = logging.getLogger('django')
@@ -75,9 +80,11 @@ class TrinoProcessor(RagProcessor):
     def _initialize_agent(self) -> AgentExecutor:
         tools = [
             self._create_run_sql_query_tool(),
-            self._create_generate_trino_sql_tool(),
+            #self._create_generate_trino_sql_tool(),
             self._create_answer_general_question_tool(),
-            self._create_generate_pandas_dataset_tool(),
+            #self._create_generate_pandas_dataset_tool(),
+            self._analyze_schema_and_tables_tool(),
+            self._get_rules_of_writing_sql_query_tool()
         ]
         self.llm.bind_tools(tools)
 
@@ -97,6 +104,39 @@ class TrinoProcessor(RagProcessor):
         )
         return agent_executor
 
+    def _get_rules_of_writing_sql_query_tool(self):
+
+        @tool
+        def get_rules_of_writing_sql_query(question: str) -> str:
+            """Returns the rules of writing trino specific query. Use it to understand how to write efficient queries."""
+            if not self.db:
+                return "Database connection is not initialized."
+            prompt_path = f"{WORK_DIR}/{TRINO_PROMPT_PATH}"
+            try:
+                with open(prompt_path, "r") as file:
+                    prompt = file.read()
+            except FileNotFoundError as e:
+                return str(e.__cause__)
+            return prompt
+
+        return get_rules_of_writing_sql_query
+
+    def _analyze_schema_and_tables_tool(self):
+
+        @tool
+        def analyze_schema_and_tables(schema_name: str) -> str:
+            """Returns schema structure and tables structure. You need this tool to know what data is stored in the tables in order to generate a correct query."""
+            if not self.db:
+                return "Database connection is not initialized."
+            try:
+                sql_query = f"SELECT * FROM information_schema.columns WHERE table_schema = '{schema_name}' AND column_name != 'id' AND column_name != 'root_id' AND column_name != 'parent_id'"
+                result = self.db.run(sql_query)
+                return result
+            except Exception as e:
+                return str(e.__cause__)
+
+        return analyze_schema_and_tables
+
     def _create_run_sql_query_tool(self):
         @tool
         def run_sql_query(sql_query: str) -> str:
@@ -112,19 +152,19 @@ class TrinoProcessor(RagProcessor):
 
         return run_sql_query
 
-    def _create_generate_trino_sql_tool(self):
-        @tool
-        def generate_trino_sql(question: str, chat_id: str) -> str:
-            """Generates Trino and Cyoda-specific SQL query based on the user question."""
-            try:
-                formatted_question = f"{question}. Remove any ; (semicolon) at the end"
-                sql_query = self.ask_question(chat_id, formatted_question)
-                return sql_query
-            except Exception as e:
-                logger.error("Error generating Trino SQL: %s", e, exc_info=True)
-                return str(e)
+    #def _create_generate_trino_sql_tool(self):
+    #    @tool
+    #    def generate_trino_sql(question: str, chat_id: str) -> str:
+    #        """Generates Trino and Cyoda-specific SQL query based on the user question."""
+    #        try:
+    #            formatted_question = f"{question}. Remove any ; (semicolon) at the end"
+    #            sql_query = self.ask_question(chat_id, formatted_question)
+    #            return sql_query
+    #        except Exception as e:
+    #            logger.error("Error generating Trino SQL: %s", e, exc_info=True)
+    #            return str(e)
 
-        return generate_trino_sql
+    #    return generate_trino_sql
 
     def _create_answer_general_question_tool(self):
         @tool
@@ -154,15 +194,16 @@ class TrinoProcessor(RagProcessor):
 
         return generate_pandas_ai_compatible_dataset
 
-    def ask_question_agent(self, chat_id: str, question: str) -> str:
+    def ask_question_agent(self, chat_id: str, schema_name: str, question: str) -> str:
         if not hasattr(self, 'agent_executor'):
             logger.error("Agent executor is not initialized.")
             return "Agent executor is not initialized."
 
         input_prompt = (
-            f"{question}. Please use chat_id '{chat_id}'. Analyze the table structure first."
+            f"{question}. Schema name is '{schema_name}'. Please use chat_id '{chat_id}'. Analyze the table structure first and check the rules for writing query."
             f" Remember the rules how to formulate queries specific to cyoda trino. Remember what tables structure do you have, maybe you need joins. Remember how to do joins."
-            f"If you get an error, fix the query, explain how you fixed it, and retry after correcting the query. Return the answer to the question. Max retries = 3"
+            f"If you get an error, fix the query, explain how you fixed it, and retry after correcting the query. Return the answer to the question. Max retries = 3."
+            f"Always include all successful sql queries into the answer"
         )
         try:
             answer = self.agent_executor.invoke({"input": input_prompt})
