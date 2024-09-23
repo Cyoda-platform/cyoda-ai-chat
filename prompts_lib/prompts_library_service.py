@@ -22,9 +22,6 @@ class PromptService:
         # Initialize the 'mappings' key with an empty dictionary and assign the 'default' value
         self.prompts[PromptType.MAPPINGS.value] = {}
         self.prompts[PromptType.MAPPINGS.value]["default"] = MAPPINGS_DEFAULT_PROMPTS
-        
-        self.prompts[PromptType.MAPPINGS.value] = {}
-        self.prompts[PromptType.MAPPINGS.value]["default"] = WORKFLOWS_DEFAULT_PROMPTS
 
     def add_prompt(self, topic, user, prompt):
         if topic not in self.prompts:

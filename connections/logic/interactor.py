@@ -7,7 +7,7 @@ from rest_framework.exceptions import APIException
 from . import prompts
 from .processor import ConnectionProcessor
 from common_utils.config import (
-    MAX_RETRIES_ADD_CONNECION,
+    MAX_RETRIES_ADD_CONNECTION,
     WORK_DIR,
     API_URL,
     QUESTIONNAIRE_JSON_SCHEMA_PATH,
@@ -163,7 +163,7 @@ class ConnectionsInteractor:
     def generate_dto(self, chat_id: str, prompt: str, schema_path: str):
         try:
             result = self.processor.ask_question(chat_id, prompt)
-            return validate_and_parse_json(self.processor, chat_id, result, f"{WORK_DIR}/{schema_path}", MAX_RETRIES_ADD_CONNECION)
+            return validate_and_parse_json(self.processor, chat_id, result, f"{WORK_DIR}/{schema_path}", MAX_RETRIES_ADD_CONNECTION)
         except Exception as e:
             logger.error(f"Error generating DTO for schema {schema_path}: %s", e)
             raise
@@ -200,7 +200,7 @@ class ConnectionsInteractor:
             for parameter in parameters_list:
                 try:
                     parameters_configs.append(validate_and_parse_json(self.processor, chat_id, json.dumps(parameter),
-                                                                           f"{WORK_DIR}/{PARAMETER_JSON_SCHEMA_PATH}", MAX_RETRIES_ADD_CONNECION))
+                                                                           f"{WORK_DIR}/{PARAMETER_JSON_SCHEMA_PATH}", MAX_RETRIES_ADD_CONNECTION))
                 except Exception as e:
                     logger.error("Error generating endpoint DTO: %s", e)
             return parameters_configs

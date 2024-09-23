@@ -15,7 +15,7 @@ token_store = {}
 API_URL = get_env_var("API_URL")
 GET_WORKFLOW_LIST_PATH = get_env_var("GET_WORKFLOW_LIST_PATH")
 POST_SAVE_SCHEMA_PATH = get_env_var("POST_SAVE_SCHEMA_PATH")
-MAX_RETRIES_ADD_CONNECION = int(get_env_var("MAX_RETRIES_ADD_CONNECION"))
+MAX_RETRIES_ADD_CONNECTION = int(get_env_var("MAX_RETRIES_ADD_CONNECTION"))
 
 ENV = get_env_var("ENV")
 WORK_DIR = (
@@ -93,7 +93,7 @@ class EntityTools:
         )
         result_data = rag_processor.ask_question(chat_id, prompt)
         workflow_schema_validation_path= f"{WORK_DIR}/data/v1/workflows/{workflow_name}_schema.json"
-        parsed_data = self.validate_and_parse_json(chat_id, result_data, workflow_schema_validation_path, MAX_RETRIES_ADD_CONNECION)
+        parsed_data = self.validate_and_parse_json(chat_id, result_data, workflow_schema_validation_path, MAX_RETRIES_ADD_CONNECTION)
         schema_data = json.dumps(parsed_data)
         path = f"entity/new/{parsed_data["dataFormat"]}/{parsed_data["entityType"]}/{parsed_data["workflow_name"]}/1"
         response = send_post_request(token, API_URL, path, schema_data, None)
@@ -105,7 +105,7 @@ class EntityTools:
         chat_id: str,
         data: str,
         schema_path: str,
-        max_retries: int = MAX_RETRIES_ADD_CONNECION,
+        max_retries: int = MAX_RETRIES_ADD_CONNECTION,
     ):
         """
         Parses and validates JSON data against a given schema. If validation fails,
