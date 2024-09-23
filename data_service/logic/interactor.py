@@ -1,6 +1,9 @@
 import logging
 from rest_framework.exceptions import APIException
+
+from middleware.caching.caching_service import CacheRegistry, CacheEntity
 from .processor import TrinoProcessor
+from common_utils.config import WORK_DIR, TRINO_PROMPT_PATH
 from common_utils.config import WORK_DIR, TRINO_PROMPT_PATH
 
 logger = logging.getLogger("django")
@@ -8,7 +11,7 @@ logger = logging.getLogger("django")
 
 class TrinoInteractor:
 
-    initialized_requests = set()
+    initialized_requests = CacheRegistry.get_service()
 
     def __init__(self, processor: TrinoProcessor):
 
@@ -24,7 +27,7 @@ class TrinoInteractor:
 
         try:
             self.processor.chat_history.clear_chat_history(chat_id)
-            self.initialized_requests.discard(chat_id)
+            self.initialized_requests.remove(chat_id)
             return {"message": f"Chat context with id {chat_id} cleared."}
         except Exception as e:
             self._log_and_raise_error("An error occurred while clearing the context", e)
@@ -32,7 +35,7 @@ class TrinoInteractor:
     def chat(self, chat_id, question):
 
         try:
-            if chat_id not in self.initialized_requests:
+            if not self.initialized_requests.contains_key(chat_id):
                 return {
                     "success": False,
                     "message": f"{chat_id} is not in initialized requests. Please initialize first.",
@@ -72,7 +75,7 @@ class TrinoInteractor:
 
             self.processor.ask_question_agent(chat_id, f"Do your best to remember this instruction for further interactions. "
                                                        f"{prompt}. You do not need to execute any queries here, just remember, how to do it" )
-            self.initialized_requests.add(chat_id)
+            self.initialized_requests.put(CacheEntity.empty(chat_id, 31536000))
             return {"success": True, "message": str(result)}
         except Exception as e:
             self._log_and_raise_error("An error occurred while initializing the chat", e)

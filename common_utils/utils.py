@@ -1,5 +1,7 @@
 import os
 import logging
+import time
+
 import requests
 from typing import Optional
 import uuid
@@ -148,6 +150,10 @@ def send_delete_request(token: str, api_url: str, path: str) -> Optional[request
         logger.error(f"Error during GET request to {url}: {err}")
         raise
 
+def expiration_date(seconds: int) -> int:
+    current_timestamp = time.time()
+    one_year_later = current_timestamp + seconds
+    return int(one_year_later)
 
 def validate_and_parse_json(
             processor,
@@ -187,3 +193,4 @@ def validate_and_parse_json(
                 attempt += 1
         logger.error("Maximum retry attempts reached. Validation failed.")
         raise ValueError("JSON validation failed after retries.")
+
