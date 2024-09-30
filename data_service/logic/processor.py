@@ -15,7 +15,6 @@ from common_utils.config import (
 from langchain_community.utilities.sql_database import SQLDatabase
 
 from rag_processor.processor import RagProcessor
-from rag_processor.chat_history import ChatHistoryService
 from langchain.agents import AgentExecutor, create_tool_calling_agent, tool
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -35,7 +34,7 @@ You can order the results to return the most informative data in the database.
 Wrap each column name in double quotes (") to denote them as delimited identifiers.
 Pay attention to use only the column names you can see in the tables below. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.
 Pay attention to use date('now') function to get the current date, if the question involves "today".
-You can do joins only on indexes!
+You can do joins only on indexes and root_id (for root entity indexes will be empty)!
 If you have any errors - max retries is 3.
 Always return all correct sql queries you used.
 {context}"""

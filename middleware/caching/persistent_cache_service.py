@@ -11,7 +11,7 @@ from middleware.repository.crud_repository import CrudRepository
 
 logger = logging.getLogger('django')
 
-class InMemoryCachingService(CachingService):
+class PersistentCachingService(CachingService):
     _instance = None
     _lock = threading.Lock()  # Lock for thread safety
 
@@ -20,7 +20,7 @@ class InMemoryCachingService(CachingService):
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(InMemoryCachingService, cls).__new__(cls)
+                    cls._instance = super(PersistentCachingService, cls).__new__(cls)
                     cls._instance.cache = cache  # Initialize cache storage
                     cls._instance.repository = repository
         return cls._instance
@@ -31,11 +31,17 @@ class InMemoryCachingService(CachingService):
     def put(self, meta, entity: CacheEntity) -> bool:
         self.cache.set(entity.key, entity)
         self.cache.touch(entity.key, entity.ttl)
+        self.write_back(meta, [entity])
         return True
 
     def get(self, meta: Any, key: str) -> Optional[CacheEntity]:
+        entity = self.cache.get(key)
+        if entity is None:
+            entities = self.repository.find_by_key(meta, key)
+            if entity is None:
+                return None
+            self.cache.put(entities[0], entity.ttl)
         return self.cache.get(key)
-
 
     def remove(self, key: str) -> bool:
         return self.cache.delete(key)
@@ -47,6 +53,14 @@ class InMemoryCachingService(CachingService):
         return self.get(meta, key) is not None
 
     def invalidate(self, meta: Any, key: str) -> bool:
+        entities = self.repository.find_by_key(meta, key)
+        if entities is not None:
+            for entity in entities:
+                if not isinstance(entity, CacheEntity) and isinstance(entity, dict):
+                    entity = CacheEntity.from_dict(entity)
+                entity.expiration = now()
+                self.repository.update_all(meta, [entity])
+                return self.remove(key)
         return True
 
     def invalidate_all(self) -> None:
@@ -56,6 +70,7 @@ class InMemoryCachingService(CachingService):
         for entity in entities:
             if entity.is_dirty:
                 entity.is_dirty = False
+                self.repository.save_all(meta, entities)
         return True
 
     def flush_dirty_entries(self, meta) -> None:

@@ -1,50 +1,39 @@
 import json
 import logging
+
 from rest_framework.exceptions import APIException
 from common_utils.utils import parse_json
+from rag_processor.config_interactor import ConfigInteractor
 from .processor import MappingProcessor
 from . import prompts
 
 logger = logging.getLogger('django')
 
-# Sets to keep track of initialized script and columns, not thread-safe - will be replaced later
-initialized_mappings = set()
-mappings_cache = {}
-
-class MappingsInteractor:
+class MappingsInteractor(ConfigInteractor):
     """
     A class that interacts with mappings for a chat system.
     """
 
     def __init__(self, processor: MappingProcessor):
-        """
-        Initializes the MappingsInteractor instance.
-        """
+
+        super().__init__(processor)
         logger.info("Initializing MappingsInteractor...")
         self.processor = processor
 
-    def initialize_mapping(self, chat_id, ds_input, entity):
-        """
-        Initializes a mapping for the given chat ID, data source input, and entity.
+    def initialize_mapping(self, token, chat_id, ds_input, entity):
 
-        :param chat_id: The ID of the chat session.
-        :param ds_input: The data source input.
-        :param entity: The entity to initialize the mapping for.
-        :return: A Response indicating the result of the initialization.
-        """
         logger.info(
             "Mapping parameters: Entity=%s, Data source input=%s", entity, ds_input
         )
-        
-        mappings_cache[chat_id] = ds_input
+        super().initialize_chat(token, chat_id, str(ds_input))
         questions = [
             prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity, entity, ds_input),
         ]
-
         logger.info("Mapping init questions list: %s", questions)
-        return self._initialize(chat_id, initialized_mappings, questions)
+        return self._initialize(chat_id, questions)
 
-    def chat(self, chat_id, user_script, return_object, question):
+    def chat(self, token, chat_id, return_object, question, user_script):
+        super().chat(token, chat_id, question, return_object, user_script)
         current_script = (
             f"Current script: {user_script}."
             if user_script and return_object != prompts.Keys.AUTOCOMPLETE.value
@@ -59,40 +48,17 @@ class MappingsInteractor:
         result = self.processor.ask_question(chat_id, ai_question)
         return self._process_return_object(chat_id, return_object, result)
 
-    def clear_context(self, chat_id):
-        """
-        Clears the context for the given chat ID.
-
-        :param chat_id: The ID of the chat session.
-        :return: A Response indicating the result of the context clearing.
-        """
-        self.processor.chat_history.clear_chat_history(chat_id)
-        items_to_remove = [initialized_mappings]
-        for item in items_to_remove:
-            self._remove_from_set(chat_id, item)
-        return {"message": f"Chat mapping with id {chat_id} cleared."}
-
-    def _initialize(self, chat_id, initialized_set, questions):
-        """
-        A private method that initializes a resource for the given chat ID.
-
-        :param chat_id: The ID of the chat session.
-        :param initialized_set: The set to track the initialized resources.
-        :param question: The prompt to ask the question.
-        :return: A Response indicating the result of the initialization.
-        """
-        if chat_id not in initialized_set:
-            try:
-                for question in questions:
-                    result = self.processor.ask_question(chat_id, question)
-                    logger.info(result)
-                initialized_set.add(chat_id)
-                return {"answer": f"{chat_id} initialization complete"}
-            except Exception as e:
-                logger.error(
-                    "An error occurred during initialization: %s", e, exc_info=True
-                )
-                return {"error": str(e)}
+    def _initialize(self, chat_id, questions):
+        try:
+            for question in questions:
+                result = self.processor.ask_question(chat_id, question)
+                logger.info(result)
+            return {"answer": f"{chat_id} initialization complete"}
+        except Exception as e:
+            logger.error(
+                "An error occurred during initialization: %s", e, exc_info=True
+            )
+            return {"error": str(e)}
 
     def _process_return_object(self, chat_id, return_object, result):
         if return_object in [

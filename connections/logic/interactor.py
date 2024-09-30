@@ -4,6 +4,8 @@ import uuid
 from typing import List, Dict
 from django.core.exceptions import BadRequest
 from rest_framework.exceptions import APIException
+
+from rag_processor.config_interactor import ConfigInteractor
 from . import prompts
 from .processor import ConnectionProcessor
 from common_utils.config import (
@@ -27,30 +29,16 @@ from common_utils.utils import (
 
 # Logger setup
 logger = logging.getLogger("django")
-initialized_requests = set()
 
-
-class ConnectionsInteractor:
+class ConnectionsInteractor(ConfigInteractor):
     def __init__(self, processor: ConnectionProcessor):
+        super().__init__(processor)
         logger.info("Initializing ConnectionsInteractor...")
         self.processor = processor
 
-    def clear_context(self, chat_id):
-        # Validate input
+    def chat(self, token: str, chat_id: str, return_object: str, question: str, user_data: str) -> dict:
         try:
-            # Clear chat history
-            self.processor.chat_history.clear_chat_history(chat_id)
-            if chat_id in initialized_requests:
-                initialized_requests.remove(chat_id)
-                return {"message": f"Chat context with id {chat_id} cleared."}
-        except Exception as e:
-            logger.error(
-                "An error occurred while clearing the context: %s", e, exc_info=True
-            )
-            raise APIException("An error occurred while clearing the context.", e)
-
-    def chat(self, token: str, chat_id: str, return_object: str, question: str) -> dict:
-        try:
+            super().chat(token, chat_id, question, return_object, user_data)
             self.validate_chat_input(chat_id, return_object, question)
         except ValueError as e:
             logger.error(f"Input validation failed: {e}")

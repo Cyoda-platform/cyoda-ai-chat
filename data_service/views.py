@@ -17,6 +17,7 @@ class InitialTrinoView(views.APIView):
         """Handle POST requests to initialize a trino."""
         try:
             logger.info("Starting InitialTrinoView")
+            token = request.headers.get("Authorization")
             chat_id = request.query_params.get("chat_id")
             if not chat_id:
                 return Response(
@@ -29,7 +30,7 @@ class InitialTrinoView(views.APIView):
                     {"error": "schema_name is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.initialize(chat_id, schema_name)
+            response = interactor.initialize_chat(token, chat_id, schema_name)
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error initializing trino: %s", e)
@@ -46,13 +47,14 @@ class ChatTrinoView(views.APIView):
         """Handle POST requests to process a chat trino."""
         logger.info("Starting ChatTrinoView")
         try:
+            token = request.headers.get("Authorization")
             chat_id = request.query_params.get("chat_id")
             if not chat_id:
                 return Response(
                     {"error": "chat_id is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.chat(chat_id, request.data)
+            response = interactor.chat(token, chat_id, request.data, None, None)
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error processing trino chat: %s", e)
@@ -75,7 +77,8 @@ class ChatTrinoClearView(views.APIView):
                     {"error": "chat_id is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.clear_context(chat_id)
+            token = request.headers.get("Authorization")
+            response = interactor.clear_chat(chat_id, token)
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error clearing trino chat: %s", e)
@@ -100,8 +103,29 @@ class ChatTrinoRunQueryView(views.APIView):
                 {"error": "Failed to process trino chat request"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-            
-            
+
+class ChatTrinoSaveView(views.APIView):
+
+    def post(self, request, *args, **kwargs):
+        logger.info("Starting ChatTrinoSaveView")
+        try:
+            token = request.headers.get("Authorization")
+            chat_id = request.query_params.get("chat_id")
+            if not chat_id:
+                return Response(
+                    {"error": "chat_id is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            interactor.update_chat_id(token, chat_id)
+            return Response({"success": f"{chat_id}"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error("Error processing trino chat: %s", e)
+            return Response(
+                {"error": "Failed to process trino chat request"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 class ReturnDataView(views.APIView):
     """
     View to handle requests to return data.

@@ -1,12 +1,8 @@
 
-import sys
 import json
 import logging
-from typing import List, Dict
-import uuid
 import jsonschema
-from common_utils.utils import get_env_var
-from common_utils.utils import get_env_var, send_get_request, send_post_request, send_put_request
+from common_utils.utils import get_env_var, send_get_request, send_post_request
 from workflows.logic.processor import WorkflowProcessor
 from common_utils.utils import parse_json, read_json_file, validate_result
 
@@ -32,7 +28,7 @@ class EntityTools:
         
     
     def get_entity_by_id(self):
-        """Function to get an entity."""
+        """Function to get an entity.py."""
         pass
 
     def get_current_state(self):
@@ -95,7 +91,7 @@ class EntityTools:
         workflow_schema_validation_path= f"{WORK_DIR}/data/v1/workflows/{workflow_name}_schema.json"
         parsed_data = self.validate_and_parse_json(chat_id, result_data, workflow_schema_validation_path, MAX_RETRIES_ADD_CONNECTION)
         schema_data = json.dumps(parsed_data)
-        path = f"entity/new/{parsed_data["dataFormat"]}/{parsed_data["entityType"]}/{parsed_data["workflow_name"]}/1"
+        path = f"entity.py/new/{parsed_data["dataFormat"]}/{parsed_data["entityType"]}/{parsed_data["workflow_name"]}/1"
         response = send_post_request(token, API_URL, path, schema_data, None)
         return response.json()
 

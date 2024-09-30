@@ -17,6 +17,7 @@ from common_utils.config import (
     WORKFLOW_SCHEMA_PATH,
     WORKFLOW_TRANSITIONS_SCHEMA_PATH
 )
+from rag_processor.config_interactor import ConfigInteractor
 from .workflow_gen_service import WorkflowGenerationService
 from .processor import WorkflowProcessor
 from . import prompts
@@ -24,36 +25,27 @@ from . import prompts
 # Initialize logging
 logger = logging.getLogger('django')
 
-# Services
-initialized_requests = set()
 
-
-class WorkflowsInteractor:
+class WorkflowsInteractor(ConfigInteractor):
     def __init__(self, processor: WorkflowProcessor, workflow_generation_service: WorkflowGenerationService):
+        super().__init__(processor)
         logger.info("Initializing WorkflowsInteractor...")
         self.workflow_generation_service = workflow_generation_service
         self.processor = processor
-
-    def clear_context(self, chat_id):
-        try:
-            self.processor.chat_history.clear_chat_history(chat_id)
-            if chat_id in initialized_requests:
-                initialized_requests.remove(chat_id)
-                return {"message": f"Chat context with id {chat_id} cleared."}
-            return {"message": f"Chat context with id {chat_id} was empty."}
-        except Exception as e:
-            self._log_and_raise_error("An error occurred while clearing the context", e)
 
     def _log_and_raise_error(self, message, exception):
         logger.error(f"{message}: %s", exception, exc_info=True)
         raise APIException(message, exception)
 
-    def chat(self, request, token):
+    def chat(self, token, chat_id, question, return_object, request):
+
         json_data = self._parse_request_data(request)
         try:
             chat_id = json_data.get("chat_id")
             if not chat_id:
                 return {"success": False, "message": "chat_id is missing"}
+
+            super().chat(token, chat_id, question, return_object, request)
 
             return_object = json_data.get("return_object")
             if not return_object:

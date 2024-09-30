@@ -34,9 +34,11 @@ class InitialConnectionView(views.APIView):
                 **serializer.validated_data
             )
             try:
-                response = interactor.initialize_connection(
+                token = request.headers.get("Authorization")
+                response = interactor.initialize_chat(
+                    token,
                     initial_connection_request.id,
-                    initial_connection_request.ds_doc,
+                    str(initial_connection_request.ds_doc),
                 )
                 logger.info(
                     "Initial connection established for chat_id: %s",
@@ -75,6 +77,7 @@ class ChatConnectionView(views.APIView):
                     chat_connection_request.id,
                     chat_connection_request.return_object,
                     chat_connection_request.question,
+                    ""
                 )
                 logger.info(
                     "Chat connection request processed for chat_id: %s",
@@ -116,7 +119,8 @@ class ChatConnectionClearView(views.APIView):
         """
         chat_id = request.query_params.get("id", "")
         try:
-            interactor.clear_context(chat_id)
+            token = request.headers.get("Authorization")
+            interactor.clear_chat(chat_id, token)
             logger.info("Context cleared for chat_id: %s", chat_id)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:

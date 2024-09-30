@@ -151,9 +151,13 @@ def send_delete_request(token: str, api_url: str, path: str) -> Optional[request
         raise
 
 def expiration_date(seconds: int) -> int:
-    current_timestamp = time.time()
+    current_timestamp = now()
     one_year_later = current_timestamp + seconds
-    return int(one_year_later)
+    return int(one_year_later*1000.0)
+
+def now():
+    timestamp = int(time.time()*1000.0)
+    return timestamp
 
 def validate_and_parse_json(
             processor,

@@ -22,11 +22,13 @@ class InitialMappingView(views.APIView):
         if serializer.is_valid():
             initial_mapping_request = InitialMappingRequestDTO(
                 id=serializer.validated_data.get("id", ""),
-                entity=serializer.validated_data.get("entity", ""),
+                entity=serializer.validated_data.get("entity.py", ""),
                 input=serializer.validated_data.get("input", ""),
             )
             try:
+                token = request.headers.get("Authorization")
                 response = interactor.initialize_mapping(
+                    token=token,
                     chat_id=initial_mapping_request.id,
                     ds_input=initial_mapping_request.input,
                     entity=initial_mapping_request.entity,
@@ -64,7 +66,9 @@ class ChatMappingView(views.APIView):
                 return_object=serializer.validated_data.get("return_object", ""),
             )
             try:
+                token = request.headers.get("Authorization")
                 response = interactor.chat(
+                    token,
                     chat_mapping_request.id,
                     chat_mapping_request.user_script,
                     chat_mapping_request.return_object,
@@ -95,7 +99,8 @@ class ChatMappingClearView(views.APIView):
         """Handle GET requests to clear a chat mapping."""
         chat_id = request.query_params.get("id", "")
         try:
-            interactor.clear_context(chat_id)
+            token = request.headers.get("Authorization")
+            interactor.clear_chat(chat_id, token)
             logger.info("Context cleared for chat_id: %s", chat_id)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:

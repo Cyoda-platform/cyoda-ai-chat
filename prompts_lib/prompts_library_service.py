@@ -1,8 +1,7 @@
 from connections.logic.prompts import COLLECTIONS_DEFAULT_PROMPTS
 from mappings.logic.prompts import MAPPINGS_DEFAULT_PROMPTS
-from workflows.logic.prompts import WORKFLOWS_DEFAULT_PROMPTS
 from enum import Enum
-
+#todo prompts - persistent
 
 class PromptType(Enum):
     CONNECTIONS = "connections"

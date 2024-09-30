@@ -1,20 +1,21 @@
 import sys
 import logging
 from abc import ABC
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
 from langchain_community.document_loaders import (
     GitLoader,
     WebBaseLoader,
     DirectoryLoader,
     TextLoader,
 )
-from langchain_community.vectorstores import Chroma
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from common_utils.config import (
     OPENAI_API_KEY,
@@ -28,7 +29,8 @@ from common_utils.config import (
     ENV,
     WORK_DIR,
 )
-from .chat_history import chat_history_service
+from .vector_store_factory import create_vector_store
+from .chat_memory_factory import get_session_history
 
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user question \
         which might reference context in the chat history, formulate a standalone question \
@@ -37,6 +39,7 @@ CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user ques
 
 logger = logging.getLogger("django")
 
+store = {}
 
 class RagProcessor(ABC):
 
@@ -55,9 +58,8 @@ class RagProcessor(ABC):
         )
         logger.info("Initializing RagProcessor v1...")
         self.llm = self.initialize_llm(temperature, max_tokens, model, openai_api_base)
-        self.chat_history = chat_history_service
         self.vectorstore = self.init_vectorstore(path, config_docs)
-        self.rag_chain = self.process_rag_chain(system_prompt)
+        self.conversational_rag_chain = self.process_rag_chain(system_prompt)
 
     def initialize_llm(
         self,
@@ -77,21 +79,20 @@ class RagProcessor(ABC):
             )
         return None
 
-    def init_vectorstore(self, path: str, config_docs: List[Dict]) -> Optional[Chroma]:
+    def init_vectorstore(self, path: str, config_docs: List[Dict]) -> Optional[Any]:
         """Initializes the vector store with documents."""
         self._setup_sqlite3()
         if INIT_LLM == "true":
             loader = (
-                self._directory_loader(path)
-                if ENV.lower() == "local"
-                else self._git_loader(path)
+                self._directory_loader(path) if ENV.lower() == "local" else self._git_loader(path)
             )
             docs = loader.load()
             if config_docs:
                 docs.extend(config_docs)
             logger.info("Number of documents loaded: %s", len(docs))
             splits = self.text_splitter.split_documents(docs)
-            return Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
+            vstore = create_vector_store(path, splits)
+            return vstore
         return None
 
     def process_rag_chain(self, qa_system_prompt: str) -> Optional[object]:
@@ -99,10 +100,6 @@ class RagProcessor(ABC):
         if INIT_LLM == "true" and self.vectorstore:
             retriever = self.vectorstore.as_retriever(
                 search_kwargs={"k": SPLIT_DOCS_LOAD_K}
-            )
-            logger.info(
-                "Number of documents in vectorstore: %s",
-                self.vectorstore._collection.count(),
             )
 
             contextualize_q_prompt = self._get_prompt_template()
@@ -118,9 +115,19 @@ class RagProcessor(ABC):
                 ]
             )
             question_answer_chain = create_stuff_documents_chain(self.llm, qa_prompt)
-            return create_retrieval_chain(
+
+            rag_chain = create_retrieval_chain(
                 history_aware_retriever, question_answer_chain
             )
+            conversational_rag_chain = RunnableWithMessageHistory(
+                rag_chain,
+                get_session_history,
+                input_messages_key="input",
+                history_messages_key="chat_history",
+                output_messages_key="answer",
+            )
+            return conversational_rag_chain
+
         return None
 
     def get_web_docs(self, urls: List[str]) -> List[Dict]:
@@ -134,16 +141,18 @@ class RagProcessor(ABC):
         web_xml_loader.default_parser = "xml"
         return web_xml_loader.load()
 
+
     def ask_rag_question(self, chat_id: str, question: str) -> str:
         """Asks a question using the RAG chain and updates chat history."""
-        if self.rag_chain:
-            ai_msg = self.rag_chain.invoke(
-                {
-                    "input": question,
-                    "chat_history": self.chat_history.get_chat_history(chat_id),
-                }
+
+
+        if self.conversational_rag_chain:
+            ai_msg = self.conversational_rag_chain.invoke(
+                {"input": question},
+                config={
+                    "configurable": {"session_id": chat_id}
+                },
             )
-            self.chat_history.add_to_chat_history(chat_id, question, ai_msg["answer"])
             logger.info(ai_msg["answer"])
             return ai_msg["answer"]
         return ""
@@ -159,8 +168,6 @@ class RagProcessor(ABC):
                 docs.extend(self.get_web_xml_docs(xml_urls))
                 splits = self.text_splitter.split_documents(docs)
                 self.vectorstore.add_documents(splits)
-                self.vectorstore.persist()
-                logger.info("New count = %s", self.vectorstore._collection.count())
                 return {"answer": "Added additional sources successfully"}
             except Exception as e:
                 logger.error(
@@ -203,3 +210,8 @@ class RagProcessor(ABC):
         return DirectoryLoader(
             f"{WORK_DIR}/{CYODA_AI_CONFIG_GEN_PATH}/{path}", loader_cls=TextLoader
         )
+
+    def clear_chat_history(self, chat_id):
+        chat_history_service = get_session_history(chat_id)
+        chat_history_service.clear()
+        return True

@@ -11,6 +11,7 @@ from common_utils.config import (
     PROMPT_PATH
 )
 from common_utils.utils import read_file
+from rag_processor.chat_memory_factory import get_session_history
 from rag_processor.processor import RagProcessor
 
 logger = logging.getLogger('django')
@@ -50,7 +51,8 @@ Before you proceed, find the instruction on how to generate workflow version 6a5
             ]
         )
         response = self.llm.invoke([message])
-        self.chat_history.add_to_chat_history(chat_id, "Generate workflow", response)
+        messages = [HumanMessage(content="Generate workflow"), response]
+        get_session_history(chat_id).add_messages(messages)
         return response.content
 
     def load_additional_sources(self, urls: List[str]):
