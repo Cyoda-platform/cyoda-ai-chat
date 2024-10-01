@@ -7,7 +7,7 @@ from middleware.repository.repository import Repository
 
 
 class DBKeys(Enum):
-    CYODA = "cyoda"
+    CYODA = "CYODA"
 
 class CrudRepository(Repository):
     """
