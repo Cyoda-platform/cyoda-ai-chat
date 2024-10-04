@@ -4,8 +4,10 @@ from typing import Optional, List, Any
 import logging
 
 from common_utils.utils import now
-from middleware.caching.caching_service import CachingService, CacheEntity
+from middleware.caching.caching_service import CachingService
 from django.core.cache import cache
+
+from middleware.entity.cache_entity import CacheableEntity
 from middleware.repository.crud_repository import CrudRepository
 
 
@@ -28,36 +30,42 @@ class PersistentCachingService(CachingService):
     def __init__(self, *args, **kwargs):
         pass
 
-    def put(self, meta, entity: CacheEntity) -> bool:
+    def put_and_write_back(self, meta, entity: CacheableEntity) -> bool:
         self.cache.set(entity.key, entity)
         self.cache.touch(entity.key, entity.ttl)
         self.write_back(meta, [entity])
         return True
 
-    def get(self, meta: Any, key: str) -> Optional[CacheEntity]:
+    def put(self, meta, entity: CacheableEntity) -> bool:
+        self.cache.set(entity.key, entity)
+        self.cache.touch(entity.key, entity.ttl)
+        return True
+
+    def get(self, meta: Any, key: str) -> Optional[CacheableEntity]:
         entity = self.cache.get(key)
         if entity is None:
             entities = self.repository.find_by_key(meta, key)
             if entity is None:
                 return None
-            self.cache.put(entities[0], entity.ttl)
+            self.cache.put_and_write_back(entities[0], entity.ttl)
         return self.cache.get(key)
 
     def remove(self, key: str) -> bool:
         return self.cache.delete(key)
 
     def clear(self) -> None:
-        self.cache.clear()
+        self.cache.chat_clear()
 
     def contains_key(self, meta: Any, key: str) -> bool:
         return self.get(meta, key) is not None
 
     def invalidate(self, meta: Any, key: str) -> bool:
+        self.cache.delete(key)
         entities = self.repository.find_by_key(meta, key)
         if entities is not None:
             for entity in entities:
-                if not isinstance(entity, CacheEntity) and isinstance(entity, dict):
-                    entity = CacheEntity.from_dict(entity)
+                if not isinstance(entity, CacheableEntity) and isinstance(entity, dict):
+                    entity = CacheableEntity.from_dict(entity)
                 entity.expiration = now()
                 self.repository.update_all(meta, [entity])
                 return self.remove(key)
@@ -66,7 +74,7 @@ class PersistentCachingService(CachingService):
     def invalidate_all(self) -> None:
         self.clear()
 
-    def write_back(self, meta, entities: List[CacheEntity]) -> bool:
+    def write_back(self, meta, entities: List[CacheableEntity]) -> bool:
         for entity in entities:
             if entity.is_dirty:
                 entity.is_dirty = False

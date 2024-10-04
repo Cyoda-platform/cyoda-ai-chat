@@ -19,12 +19,12 @@ RETURN_DATA = {
     Keys.TRANSFORMERS.value: "Return a relevant transformerKey for this column mapping from the list of available transformers. Return only transformerKey WITHOUT any other text.",
 }
 
-MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}? What are the input attributes? How do does input correspond to the entity.py? Which attributes can be mapped from the input to the entity.py. Return json array in the form of [src_json_path:dst_json_path]. Use your common knowledge and semantic analysis."
-MAPPINGS_INITIAL_PROMPT_SCRIPT = "Get {} entity.py json schema from the context. If you don't have it - return that you do not have data for {} entity.py and stop execution. Fill in Mappings Questionnaire json based on the input: {}. Return the resulting Questionnaire json."
+MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}? What are the input attributes? How do does input correspond to the entity? Which attributes can be mapped from the input to the entity. Return json array in the form of [src_json_path:dst_json_path]. Use your common knowledge and semantic analysis."
+MAPPINGS_INITIAL_PROMPT_SCRIPT = "Get {} entity json schema from the context. If you don't have it - return that you do not have data for {} entity and stop execution. Fill in Mappings Questionnaire json based on the input: {}. Return the resulting Questionnaire json."
 
 MAPPINGS_DEFAULT_PROMPTS = [
     'analyze the script and add all missing inputSrcPaths (they should be available for all input attributes used in the script). Use slash "/" for the jsonpath.',
-    "write a script to map the input to the entity.py.",
+    "write a script to map the input to the entity.",
 ]
 
 SCRIPT_REFINE_PROMPT = "Provide a list of inputSrcPaths for this script. Write correct inputSrcPaths with a forward slash and wildcard if applicable. Return a json array."

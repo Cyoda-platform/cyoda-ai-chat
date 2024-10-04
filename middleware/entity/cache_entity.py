@@ -2,11 +2,12 @@ from dataclasses import dataclass, asdict, field
 from typing import Any
 
 from common_utils.utils import expiration_date, now
-from middleware.repository.cyoda.cyoda_entity import CyodaEntity
+from middleware.entity.cacheable_entity import CacheableEntity
+from middleware.entity.cyoda_entity import CyodaEntity
 
 
 @dataclass
-class CacheEntity(CyodaEntity):
+class CacheEntity(CacheableEntity, CyodaEntity):
     technical_id: Any = field(init=False, default=None, repr=False, metadata={"include_in_dict":False})
     key: Any
     value: Any
@@ -36,19 +37,19 @@ class CacheEntity(CyodaEntity):
 
     @staticmethod
     def dummy():
-        return CacheEntity(key="", value={}, ttl=0, meta={}, expiration=expiration_date(0), last_modified=now(), is_dirty=True)
+        return CacheEntity(key="", value={}, ttl=0, meta={}, expiration=expiration_date(31536000), last_modified=now(), is_dirty=True)
 
     @staticmethod
     def empty(key: str, ttl: int):
-        return CacheEntity(key=key, value={}, ttl=ttl, meta={}, expiration=expiration_date(0), last_modified=now(), is_dirty=True)
+        return CacheEntity(key=key, value={}, ttl=ttl, meta={}, expiration=expiration_date(ttl), last_modified=now(), is_dirty=True)
 
     @staticmethod
     def with_meta(key: str, value: Any, ttl: int, meta: Any):
-        return CacheEntity(key=key, value=value, ttl=ttl, meta=meta, expiration=expiration_date(0), last_modified=now(), is_dirty=True)
+        return CacheEntity(key=key, value=value, ttl=ttl, meta=meta, expiration=expiration_date(ttl), last_modified=now(), is_dirty=True)
 
     @staticmethod
     def with_defaults(key: str, value: Any, ttl: int):
-        return CacheEntity(key=key, value=value, ttl=ttl, meta={}, expiration=expiration_date(0), last_modified=now(), is_dirty=True)
+        return CacheEntity(key=key, value=value, ttl=ttl, meta={}, expiration=expiration_date(ttl), last_modified=now(), is_dirty=True)
 
     @staticmethod
     def generate_id(prefix: str, key: str):

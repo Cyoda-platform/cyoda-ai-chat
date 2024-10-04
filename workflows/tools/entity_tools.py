@@ -28,7 +28,7 @@ class EntityTools:
         
     
     def get_entity_by_id(self):
-        """Function to get an entity.py."""
+        """Function to get an entity"""
         pass
 
     def get_current_state(self):
@@ -91,7 +91,7 @@ class EntityTools:
         workflow_schema_validation_path= f"{WORK_DIR}/data/v1/workflows/{workflow_name}_schema.json"
         parsed_data = self.validate_and_parse_json(chat_id, result_data, workflow_schema_validation_path, MAX_RETRIES_ADD_CONNECTION)
         schema_data = json.dumps(parsed_data)
-        path = f"entity.py/new/{parsed_data["dataFormat"]}/{parsed_data["entityType"]}/{parsed_data["workflow_name"]}/1"
+        path = f"entity/new/{parsed_data["dataFormat"]}/{parsed_data["entityType"]}/{parsed_data["workflow_name"]}/1"
         response = send_post_request(token, API_URL, path, schema_data, None)
         return response.json()
 

@@ -7,4 +7,7 @@ urlpatterns = [
     path('chat-clear', views.ChatConnectionClearView.as_view(), name='connections-chat-clear'),
     path('return-data', views.ReturnDataView.as_view(), name='connections-return-data'),
     path('ingest-data', views.ChatIngestDataView.as_view(), name='connections-ingest-data'),
+    path('initialized', views.ChatConnectionInitializedView.as_view(), name='connections-initialized'),
+    path('chat-history', views.ChatConnectionGetChatHistoryView.as_view(), name='history'),
+    path('update-id', views.ChatConnectionUpdateIdView.as_view(), name='update-id'),
 ]

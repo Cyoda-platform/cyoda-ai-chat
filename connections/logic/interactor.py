@@ -5,7 +5,7 @@ from typing import List, Dict
 from django.core.exceptions import BadRequest
 from rest_framework.exceptions import APIException
 
-from rag_processor.config_interactor import ConfigInteractor
+from config_generator.config_interactor import ConfigInteractor
 from . import prompts
 from .processor import ConnectionProcessor
 from common_utils.config import (
@@ -27,7 +27,6 @@ from common_utils.utils import (
     validate_and_parse_json
 )
 
-# Logger setup
 logger = logging.getLogger("django")
 
 class ConnectionsInteractor(ConfigInteractor):
@@ -37,8 +36,8 @@ class ConnectionsInteractor(ConfigInteractor):
         self.processor = processor
 
     def chat(self, token: str, chat_id: str, return_object: str, question: str, user_data: str) -> dict:
+        super().chat(token, chat_id, question, return_object, user_data)
         try:
-            super().chat(token, chat_id, question, return_object, user_data)
             self.validate_chat_input(chat_id, return_object, question)
         except ValueError as e:
             logger.error(f"Input validation failed: {e}")

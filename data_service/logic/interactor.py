@@ -1,6 +1,6 @@
 import logging
 
-from rag_processor.config_interactor import ConfigInteractor
+from config_generator.config_interactor import ConfigInteractor
 from .processor import TrinoProcessor
 from common_utils.config import WORK_DIR, TRINO_PROMPT_PATH
 
@@ -18,22 +18,19 @@ class TrinoInteractor(ConfigInteractor):
     def chat(self, token, chat_id, question, return_object, user_data):
         try:
             super().chat(token, chat_id, question, return_object, user_data)
-            meta, key = self._get_meta_key(token, chat_id)
-            schema_name = self.cache_service.get(meta, chat_id).value
+            meta = self._get_cache_meta(token, chat_id)
+            entity = self.cache_service.get(meta, chat_id)
+            schema_name = entity.value
             result = self.processor.ask_question_agent(chat_id, schema_name, question)
             return {"success": True, "message": str(result)}
         except Exception as e:
-            self._log_and_raise_error("An error occurred while processing the chat", e)
             return {"success": False, "message": str(e)}
 
     def run_query(self, query):
-
-        try:
             result = self.processor.run_query(query)
             logger.info("Result set returned: %s", result)
             return {"success": True, "message": str(result)}
-        except Exception as e:
-            self._log_and_raise_error("An error occurred while running the query", e)
+
 
     def _initialize_trino(self, chat_id, schema_name):
         query = (
@@ -48,7 +45,7 @@ class TrinoInteractor(ConfigInteractor):
             with open(prompt_path, "r") as file:
                 prompt = file.read()
         except FileNotFoundError as e:
-            self._log_and_raise_error(f"Prompt file not found at {prompt_path}", e)
+            raise e
         self.processor.ask_question_agent(chat_id,
                                           schema_name,
                                           f"Do your best to remember this instruction for further interactions. "

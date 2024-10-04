@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from enum import Enum
-from typing import List, Any, Optional
+from typing import List, Any
 
-from middleware.repository.entity.entity import BaseEntity
+from middleware.entity import BaseEntity
 from middleware.repository.repository import Repository
 
 
@@ -24,7 +24,7 @@ class CrudRepository(Repository):
     @abstractmethod
     def delete(self, meta, entity: Any) -> None:
         """
-        Deletes a given entity.py.
+        Deletes a given entity.
         """
         pass
 
@@ -52,14 +52,14 @@ class CrudRepository(Repository):
     @abstractmethod
     def delete_by_key(self, meta, key: Any) -> None:
         """
-        Deletes the entity.py with the given key.
+        Deletes the entity with the given key.
         """
         pass
 
     @abstractmethod
     def exists_by_key(self, meta, key: Any) -> bool:
         """
-        Returns whether an entity.py with the given key exists.
+        Returns whether an entity with the given key exists.
         """
         pass
 
@@ -80,14 +80,14 @@ class CrudRepository(Repository):
     @abstractmethod
     def find_by_key(self, meta, key: Any) -> List[BaseEntity]:
         """
-        Retrieves an entity.py by its key.
+        Retrieves an entity by its key.
         """
         pass
 
     @abstractmethod
     def save(self, meta, entity: Any) -> Any:
         """
-        Saves a given entity.py.
+        Saves a given entity.
         """
         pass
 

@@ -2,167 +2,80 @@ import logging
 from rest_framework import status, views
 from rest_framework.response import Response
 from django.core.exceptions import BadRequest, ObjectDoesNotExist
-from .logic.dto import (
-    InitialConnectionRequestDTO,
-    ChatConnectionRequestDTO,
-)
-from .logic.serializers import InitialConnectionSerializer, ChatConnectionSerializer
 from .logic.interactor import ConnectionsInteractor
 from .logic.ingestion_service import DataIngestionService
 from .logic.prompts import RETURN_DATA
 from .logic.processor import ConnectionProcessor
+from config_generator import config_view_functions
 
 logger = logging.getLogger("django")
 
 interactor = ConnectionsInteractor(ConnectionProcessor())
 ingestionService = DataIngestionService()
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
+chat_id_prefix = "connections"
 
 
 class InitialConnectionView(views.APIView):
-    """
-    View to handle initial connection requests.
-    """
 
     def post(self, request, *args, **kwargs):
-        """
-        Handle POST requests to initialize a connection.
-        """
-        serializer = InitialConnectionSerializer(data=request.data)
-        if serializer.is_valid():
-            initial_connection_request = InitialConnectionRequestDTO(
-                **serializer.validated_data
-            )
-            try:
-                token = request.headers.get("Authorization")
-                response = interactor.initialize_chat(
-                    token,
-                    initial_connection_request.id,
-                    str(initial_connection_request.ds_doc),
-                )
-                logger.info(
-                    "Initial connection established for chat_id: %s",
-                    initial_connection_request.id,
-                )
-                return Response(response, status=status.HTTP_200_OK)
-            except Exception as e:
-                logger.error("Error initializing connection: %s", e)
-                return Response(
-                    {"error": "Failed to initialize connection"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-        else:
-            logger.warning("Invalid data for initial connection: %s", serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return config_view_functions.initial(request, interactor, chat_id_prefix)
+
+
+class ChatConnectionInitializedView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.is_initialized(request, interactor, chat_id_prefix)
 
 
 class ChatConnectionView(views.APIView):
-    """
-    View to handle chat connection requests.
-    """
 
     def post(self, request, *args, **kwargs):
-        """
-        Handle POST requests to process a chat connection.
-        """
-        serializer = ChatConnectionSerializer(data=request.data)
-        if serializer.is_valid():
-            chat_connection_request = ChatConnectionRequestDTO(
-                **serializer.validated_data
-            )
-            try:
-                token = request.headers.get("Authorization")
-                response = interactor.chat(
-                    token,
-                    chat_connection_request.id,
-                    chat_connection_request.return_object,
-                    chat_connection_request.question,
-                    ""
-                )
-                logger.info(
-                    "Chat connection request processed for chat_id: %s",
-                    chat_connection_request.id,
-                )
-                return Response(response, status=status.HTTP_200_OK)
-            except BadRequest as e:
-                logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
-                return Response(
-                    {"error": "Invalid input. Please check the request."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            except ObjectDoesNotExist as e:
-                logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
-                return Response(
-                    {"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND
-                )
-            except Exception as e:
-                logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
-                return Response(
-                    {"error": "Failed to process chat connection request"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-        else:
-            logger.warning(
-                "Invalid data for chat connection request: %s", serializer.errors
-            )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return config_view_functions.chat(request, interactor, chat_id_prefix)
 
-
+#todo get-> put
 class ChatConnectionClearView(views.APIView):
-    """
-    View to handle chat connection clear requests.
-    """
 
     def get(self, request):
-        """
-        Handle GET requests to clear a chat connection.
-        """
-        chat_id = request.query_params.get("id", "")
-        try:
-            token = request.headers.get("Authorization")
-            interactor.clear_chat(chat_id, token)
-            logger.info("Context cleared for chat_id: %s", chat_id)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            logger.error("Error clearing context: %s", e)
-            return Response(
-                {"error": "Failed to clear context"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        return config_view_functions.chat_clear(request, interactor, chat_id_prefix)
+
+class ChatSaveChatView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.write_back_chat_cache(request, interactor, chat_id_prefix)
 
 
 class ReturnDataView(views.APIView):
-    """
-    View to handle requests to return data.
-    """
 
     def get(self, request):
-        """
-        Handle GET requests to return data.
-        """
-        return_data = RETURN_DATA
-        logger.info("Returning data")
-        return Response(return_data, status=status.HTTP_200_OK)
+        return config_view_functions.return_data(interactor, RETURN_DATA)
+
+
+class ChatConnectionUpdateIdView(views.APIView):
+
+    def put(self, request, *args, **kwargs):
+        return config_view_functions.update_id(request, interactor, chat_id_prefix)
+
+
+class ChatConnectionGetChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_history(request, interactor, chat_id_prefix)
 
 
 class ChatIngestDataView(views.APIView):
-    """
-    View to handle chat connection requests.
-    """
 
     def get(self, request):
-        """
-        Handle POST requests to process a chat connection.
-        """
+
         print(request.query_params.get("datasource_id", ""))
         try:
             token = request.headers.get("Authorization")
             if not token:
                 return Response(
-                    {"error": "Authorization header is missing"},
+                    {"success": False, "message": "Authorization header is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            request_data={
+            request_data = {
                 "ds_id": request.query_params.get("datasource_id"),
                 "operation": request.query_params.get("operation"),
                 "schema_flag": request.query_params.get("schema") == "true",
@@ -177,17 +90,17 @@ class ChatIngestDataView(views.APIView):
         except BadRequest as e:
             logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
             return Response(
-                {"error": "Invalid input. Please check the request."},
+                {"success": False, "message": "Invalid input. Please check the request."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except ObjectDoesNotExist as e:
             logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
             return Response(
-                {"error": "Object not found"}, status=status.HTTP_404_NOT_FOUND
+                {"success": False, "message": "Object not found"}, status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
             return Response(
-                {"error": "Failed to process chat connection request"},
+                {"success": False, "message": f"Error processing chat workflow: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

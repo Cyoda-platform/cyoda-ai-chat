@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Optional, List
 
-from middleware.repository.entity.cache_entity import CacheEntity
+from middleware.entity.cache_entity import CacheEntity
+from middleware.entity.cacheable_entity import CacheableEntity
 
 
 class CacheKeys(Enum):
@@ -12,11 +13,15 @@ class CacheKeys(Enum):
 
 class CachingService(ABC):
     @abstractmethod
-    def put(self, meta: Any, entity: CacheEntity) -> bool:
+    def put_and_write_back(self, meta: Any, entity: CacheableEntity) -> bool:
         pass
 
     @abstractmethod
-    def get(self, meta: Any, key: str) -> Optional[CacheEntity]:
+    def put(self, meta: Any, entity: CacheableEntity) -> bool:
+        pass
+
+    @abstractmethod
+    def get(self, meta: Any, key: str) -> Optional[CacheableEntity]:
         pass
 
     @abstractmethod
@@ -40,7 +45,7 @@ class CachingService(ABC):
         pass
 
     @abstractmethod
-    def write_back(self, meta: Any, entities: List[CacheEntity]) -> bool:
+    def write_back(self, meta: Any, entities: List[CacheableEntity]) -> bool:
         pass
 
     @abstractmethod

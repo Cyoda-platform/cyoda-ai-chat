@@ -1,0 +1,13 @@
+{
+    "technical_id": "6d0b0836-7a20-11b2-9178-ae771997e365",
+    "key": "connections-ba17f7d0-7bfd-11ef-9178-ae771997e365",
+    "date": "5 Jan 20222",
+    "timestamp": 1727367690274000,
+    "messages": [
+        {
+            "question": "str",
+            "answer": "str",
+            "return_object": "str"
+        }],
+    "is_dirty": false
+}

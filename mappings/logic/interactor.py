@@ -3,7 +3,7 @@ import logging
 
 from rest_framework.exceptions import APIException
 from common_utils.utils import parse_json
-from rag_processor.config_interactor import ConfigInteractor
+from config_generator.config_interactor import ConfigInteractor
 from .processor import MappingProcessor
 from . import prompts
 
@@ -20,14 +20,14 @@ class MappingsInteractor(ConfigInteractor):
         logger.info("Initializing MappingsInteractor...")
         self.processor = processor
 
-    def initialize_mapping(self, token, chat_id, ds_input, entity):
+    def initialize_mapping(self, token, chat_id, ds_input, entity_name):
 
         logger.info(
-            "Mapping parameters: Entity=%s, Data source input=%s", entity, ds_input
+            "Mapping parameters: Entity=%s, Data source input=%s", entity_name, ds_input
         )
         super().initialize_chat(token, chat_id, str(ds_input))
         questions = [
-            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity, entity, ds_input),
+            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity_name, entity_name, ds_input),
         ]
         logger.info("Mapping init questions list: %s", questions)
         return self._initialize(chat_id, questions)
@@ -53,7 +53,7 @@ class MappingsInteractor(ConfigInteractor):
             for question in questions:
                 result = self.processor.ask_question(chat_id, question)
                 logger.info(result)
-            return {"answer": f"{chat_id} initialization complete"}
+            return {"success": True, "message": chat_id}
         except Exception as e:
             logger.error(
                 "An error occurred during initialization: %s", e, exc_info=True

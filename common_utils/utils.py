@@ -159,6 +159,11 @@ def now():
     timestamp = int(time.time()*1000.0)
     return timestamp
 
+def timestamp_before(seconds: int) -> int:
+    current_timestamp = now()
+    n_seconds_before = current_timestamp - seconds
+    return int(n_seconds_before*1000.0)
+
 def validate_and_parse_json(
             processor,
             chat_id: str,

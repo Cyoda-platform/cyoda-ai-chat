@@ -3,7 +3,6 @@ import json
 import base64
 import re
 import httpx
-from rest_framework.exceptions import APIException
 
 from common_utils.utils import (
     send_get_request,
@@ -17,12 +16,11 @@ from common_utils.config import (
     WORKFLOW_SCHEMA_PATH,
     WORKFLOW_TRANSITIONS_SCHEMA_PATH
 )
-from rag_processor.config_interactor import ConfigInteractor
+from config_generator.config_interactor import ConfigInteractor
 from .workflow_gen_service import WorkflowGenerationService
 from .processor import WorkflowProcessor
 from . import prompts
 
-# Initialize logging
 logger = logging.getLogger('django')
 
 
@@ -33,25 +31,10 @@ class WorkflowsInteractor(ConfigInteractor):
         self.workflow_generation_service = workflow_generation_service
         self.processor = processor
 
-    def _log_and_raise_error(self, message, exception):
-        logger.error(f"{message}: %s", exception, exc_info=True)
-        raise APIException(message, exception)
+    def chat(self, token, chat_id, question, return_object, json_data):
 
-    def chat(self, token, chat_id, question, return_object, request):
-
-        json_data = self._parse_request_data(request)
         try:
-            chat_id = json_data.get("chat_id")
-            if not chat_id:
-                return {"success": False, "message": "chat_id is missing"}
-
-            super().chat(token, chat_id, question, return_object, request)
-
-            return_object = json_data.get("return_object")
-            if not return_object:
-                return {"success": False, "message": "return_object is missing"}
-
-            question = json_data.get("question")
+            super().chat(token, chat_id, question, return_object, json_data)
             class_name = json_data.get("class_name")
 
             if not question or not class_name:
@@ -63,7 +46,7 @@ class WorkflowsInteractor(ConfigInteractor):
                         "message": f"Workflow id = {workflow_id}"}
 
             if return_object == prompts.Keys.GENERATE_WORKFLOW_FROM_IMAGE.value:
-                image_file = request.data.get('file')
+                image_file = json_data.get('file')
                 workflow_id = self._generate_workflow_from_image_file(chat_id, token, question, class_name, image_file)
                 return {"success": True,
                         "message": f"Workflow id = {workflow_id}"}
@@ -89,9 +72,9 @@ class WorkflowsInteractor(ConfigInteractor):
             return {"success": True, "message": f"{result}"}
 
         except Exception as e:
-            self._log_and_raise_error("An error occurred while processing the chat", e)
+            raise e
 
-    def _parse_request_data(self, request):
+    def parse_request_data(self, request):
         if 'multipart/form-data' in request.content_type:
             return json.loads(request.data.get('json_data'))
         return request.data

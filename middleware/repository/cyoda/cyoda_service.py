@@ -4,6 +4,8 @@ import time
 from typing import List, Any
 
 import logging
+
+from middleware.entity.entity import BaseEntity
 from middleware.repository.crud_repository import CrudRepository
 from common_utils.config import (CYODA_AI_IMPORT_MODEL_PATH,
                                  API_URL
@@ -12,7 +14,6 @@ from common_utils.utils import (send_get_request,
                                 send_put_request,
                                 send_post_request,
                                 send_delete_request, now)
-from middleware.repository.entity.entity import BaseEntity
 
 logger = logging.getLogger('django')
 
@@ -331,7 +332,5 @@ class CyodaService(CrudRepository):
             tree = node.get("tree")
             tree["technical_id"] = node.get("id")
             if tree:
-                entity = BaseEntity
                 entities.append(tree)
-
         return entities

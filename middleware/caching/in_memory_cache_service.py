@@ -4,8 +4,10 @@ from typing import Optional, List, Any
 import logging
 
 from common_utils.utils import now
-from middleware.caching.caching_service import CachingService, CacheEntity
+from middleware.caching.caching_service import CachingService
 from django.core.cache import cache
+
+from middleware.entity.cache_entity import CacheableEntity
 from middleware.repository.crud_repository import CrudRepository
 
 
@@ -28,12 +30,17 @@ class InMemoryCachingService(CachingService):
     def __init__(self, *args, **kwargs):
         pass
 
-    def put(self, meta, entity: CacheEntity) -> bool:
+    def put_and_write_back(self, meta, entity: CacheableEntity) -> bool:
         self.cache.set(entity.key, entity)
         self.cache.touch(entity.key, entity.ttl)
         return True
 
-    def get(self, meta: Any, key: str) -> Optional[CacheEntity]:
+    def put(self, meta, entity: CacheableEntity) -> bool:
+        self.cache.set(entity.key, entity)
+        self.cache.touch(entity.key, entity.ttl)
+        return True
+
+    def get(self, meta: Any, key: str) -> Optional[CacheableEntity]:
         return self.cache.get(key)
 
 
@@ -41,18 +48,19 @@ class InMemoryCachingService(CachingService):
         return self.cache.delete(key)
 
     def clear(self) -> None:
-        self.cache.clear()
+        self.cache.chat_clear()
 
     def contains_key(self, meta: Any, key: str) -> bool:
         return self.get(meta, key) is not None
 
     def invalidate(self, meta: Any, key: str) -> bool:
+        self.cache.delete(key)
         return True
 
     def invalidate_all(self) -> None:
         self.clear()
 
-    def write_back(self, meta, entities: List[CacheEntity]) -> bool:
+    def write_back(self, meta, entities: List[CacheableEntity]) -> bool:
         for entity in entities:
             if entity.is_dirty:
                 entity.is_dirty = False
