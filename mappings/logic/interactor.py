@@ -46,7 +46,8 @@ class MappingsInteractor(ConfigInteractor):
         if return_object == prompts.Keys.TRANSFORMERS.value:
             return self._process_transformers(question)
         result = self.processor.ask_question(chat_id, ai_question)
-        return self._process_return_object(chat_id, return_object, result)
+        response = self._process_return_object(chat_id, return_object, result)
+        return {"success": True, "message": response}
 
     def _initialize(self, chat_id, questions):
         try:
@@ -66,7 +67,7 @@ class MappingsInteractor(ConfigInteractor):
             prompts.Keys.CODE.value,
             prompts.Keys.AUTOCOMPLETE.value,
         ]:
-            response_data = {"answer": result}
+            response_data = result
         elif return_object == prompts.Keys.SCRIPT.value:
             response_data = self._process_script_return(chat_id, result)
         elif return_object == prompts.Keys.TRANSFORMERS.value:

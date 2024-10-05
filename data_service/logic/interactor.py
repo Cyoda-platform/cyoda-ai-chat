@@ -1,6 +1,7 @@
 import logging
 
 from config_generator.config_interactor import ConfigInteractor
+from middleware.entity.cache_entity import CacheEntity
 from .processor import TrinoProcessor
 from common_utils.config import WORK_DIR, TRINO_PROMPT_PATH
 
@@ -18,7 +19,7 @@ class TrinoInteractor(ConfigInteractor):
     def chat(self, token, chat_id, question, return_object, user_data):
         try:
             super().chat(token, chat_id, question, return_object, user_data)
-            meta = self._get_cache_meta(token, chat_id)
+            meta = self._get_cache_meta(token, chat_id, CacheEntity)
             entity = self.cache_service.get(meta, chat_id)
             schema_name = entity.value
             result = self.processor.ask_question_agent(chat_id, schema_name, question)

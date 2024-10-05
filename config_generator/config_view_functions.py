@@ -94,7 +94,7 @@ def chat(request, interactor: ConfigInteractor, chat_id_prefix):
         logger.info(
             "Chat connection request processed for chat_id: %s", chat_id
         )
-        add_user_chat_hitory(interactor, token, chat_id, question, response.get('answer', ''), return_object)
+        add_user_chat_hitory(interactor, token, chat_id, question, response.get('message', ''), return_object)
         return Response(response, status=status.HTTP_200_OK)
     except BadRequest as e:
         logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)

@@ -45,7 +45,8 @@ class ConfigInteractor(ABC):
 
             key = ChatHistoryEntity.generate_key(chat_id)
             meta = self._get_cache_meta(token, key, ChatHistoryEntity)
-            self.cache_service.invalidate(meta, [key])
+            if self.cache_service.contains_key(meta, key):
+                self.cache_service.invalidate(meta, [key])
             return {"success": True, "message": f"Chat context with id {chat_id} cleared."}
         except Exception as e:
             raise e

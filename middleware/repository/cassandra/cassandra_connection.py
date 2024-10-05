@@ -24,7 +24,7 @@ class CassandraConnection:
         return cls._instance
 
     def __init__(self):
-        if CassandraConnection._session is None:
+        if not self._initialized:
             self._initialize_connection()
 
     def _initialize_connection(self):
