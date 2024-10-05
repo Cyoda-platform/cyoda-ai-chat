@@ -10,4 +10,6 @@ urlpatterns = [
     path('initialized', views.ChatConnectionInitializedView.as_view(), name='connections-initialized'),
     path('chat-history', views.ChatConnectionGetChatHistoryView.as_view(), name='history'),
     path('update-id', views.ChatConnectionUpdateIdView.as_view(), name='update-id'),
+    path('save-chat', views.ChatSaveChatView.as_view(), name='save-chat'),
+    path('user-chat-history', views.ChatConnectionGetUserChatHistoryView.as_view(), name='user-chat-history'),
 ]

@@ -44,11 +44,15 @@ class ChatSaveChatView(views.APIView):
     def get(self, request):
         return config_view_functions.write_back_chat_cache(request, interactor, chat_id_prefix)
 
+class ChatConnectionGetUserChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_user_chat_history(request, interactor, chat_id_prefix)
 
 class ReturnDataView(views.APIView):
 
     def get(self, request):
-        return config_view_functions.return_data(interactor, RETURN_DATA)
+        return config_view_functions.return_data(RETURN_DATA)
 
 
 class ChatConnectionUpdateIdView(views.APIView):

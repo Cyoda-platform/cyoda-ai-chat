@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from enum import Enum
-from typing import List, Any
+from typing import List, Any, Optional
 
-from middleware.entity import BaseEntity
+from middleware.entity.entity import BaseEntity
 from middleware.repository.repository import Repository
 
 
@@ -78,7 +78,7 @@ class CrudRepository(Repository):
         pass
 
     @abstractmethod
-    def find_by_key(self, meta, key: Any) -> List[BaseEntity]:
+    def find_by_key(self, meta, key: Any) -> Optional[BaseEntity]:
         """
         Retrieves an entity by its key.
         """

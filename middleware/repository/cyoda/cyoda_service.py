@@ -1,11 +1,12 @@
 import json
 import threading
 import time
-from typing import List, Any
+from typing import List, Any, Optional
 
 import logging
 
 from middleware.entity.entity import BaseEntity
+from middleware.entity.entity_factory import base_entity_from_dict
 from middleware.repository.crud_repository import CrudRepository
 from common_utils.config import (CYODA_AI_IMPORT_MODEL_PATH,
                                  API_URL
@@ -55,9 +56,9 @@ class CyodaService(CrudRepository):
         pass
 
     def find_all_by_key(self, meta, keys: List[Any]) -> List[BaseEntity]:
-        pass
+        return self._get_all_by_ids(meta, keys)
 
-    def find_by_key(self, meta, key: Any) -> List[BaseEntity]:
+    def find_by_key(self, meta, key: Any) -> Optional[BaseEntity]:
         return self._get_by_id(meta, key)
 
     def save(self, meta, entity: Any) -> Any:
@@ -69,41 +70,64 @@ class CyodaService(CrudRepository):
     def update_all(self, meta, entities: List[Any]) -> List[BaseEntity]:
         return self._update_entities(meta, entities)
 
-    def _get_by_id(self, meta, key):
+    def _search_entities(self, meta, key):
+        # Create a snapshot search
+        snapshot_response = self._create_snapshot_search(
+            token=meta["token"],
+            model_name=meta["entity_model"],
+            model_version=meta["entity_version"],
+            condition=meta["get_by_id_condition"]
+        )
+        snapshot_id = snapshot_response
+        if not snapshot_id:
+            logger.error(f"Snapshot ID not found in response: {snapshot_response}")
+            return None
+
+        # Wait for the search to complete
+        status_response = self._wait_for_search_completion(
+            token=meta["token"],
+            snapshot_id=snapshot_id,
+            timeout=60,  # Adjust timeout as needed
+            interval=300  # Adjust interval (in milliseconds) as needed
+        )
+
+        # Retrieve search results
+        search_result = self._get_search_result(
+            token=meta["token"],
+            snapshot_id=snapshot_id,
+            page_size=100,  # Adjust page size as needed
+            page_number=1  # Starting with the first page
+        )
+        return search_result
+
+    def _get_all_by_ids(self, meta, keys) -> List[BaseEntity]:
         try:
-            # Create a snapshot search
-            snapshot_response = self._create_snapshot_search(
-                token=meta["token"],
-                model_name=meta["entity_model"],
-                model_version=meta["entity_version"],
-                condition=meta["get_by_id_condition"]
-            )
-            snapshot_id = snapshot_response
-            if not snapshot_id:
-                logger.error(f"Snapshot ID not found in response: {snapshot_response}")
-                return None
+            entities = []
+            for key in keys:
+                search_result = self._search_entities(meta, key)
+                result_entities = self.convert_to_entities(search_result)
+                base_entities = [base_entity_from_dict(meta["entity_model"], entity) for entity in result_entities]
+                entities.extend(base_entities)
+                logger.info(f"Successfully retrieved CacheEntity for key '{key}'.")
+            return entities
 
-            # Wait for the search to complete
-            status_response = self._wait_for_search_completion(
-                token=meta["token"],
-                snapshot_id=snapshot_id,
-                timeout=60,  # Adjust timeout as needed
-                interval=300  # Adjust interval (in milliseconds) as needed
-            )
 
-            # Retrieve search results
-            search_result = self._get_search_result(
-                token=meta["token"],
-                snapshot_id=snapshot_id,
-                page_size=100,  # Adjust page size as needed
-                page_number=1  # Starting with the first page
-            )
+        except TimeoutError as te:
+            logger.error(f"Timeout while reading key '{key}': {te}")
+        except Exception as e:
+            logger.error(f"Error reading key '{key}': {e}")
 
+        return None
+
+    def _get_by_id(self, meta, key) -> Optional[BaseEntity]:
+        try:
+            search_result = self._search_entities(meta, key)
             # Convert search results to CacheEntity
-            cache_entities = self.convert_to_entities(search_result)
+            result_entities = self.convert_to_entities(search_result)
+            entity = base_entity_from_dict(meta["entity_model"], result_entities[0])
             logger.info(f"Successfully retrieved CacheEntity for key '{key}'.")
-            if cache_entities is not None:
-                return cache_entities
+            if entity is not None:
+                return entity
             return None
 
         except TimeoutError as te:
@@ -333,4 +357,5 @@ class CyodaService(CrudRepository):
             tree["technical_id"] = node.get("id")
             if tree:
                 entities.append(tree)
+
         return entities

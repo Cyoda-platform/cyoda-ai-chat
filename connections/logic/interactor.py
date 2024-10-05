@@ -65,7 +65,7 @@ class ConnectionsInteractor(ConfigInteractor):
             else:
                 # Default action if no handler is found
                 result = self.processor.ask_question(chat_id, question)
-                return {"answer": result}
+                return {"success": True, "message": result}
 
         except Exception as e:
             self.log_and_raise_error("An error occurred while processing the chat", e)

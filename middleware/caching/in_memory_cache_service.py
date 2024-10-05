@@ -31,13 +31,13 @@ class InMemoryCachingService(CachingService):
         pass
 
     def put_and_write_back(self, meta, entity: CacheableEntity) -> bool:
-        self.cache.set(entity.key, entity)
-        self.cache.touch(entity.key, entity.ttl)
+        self.cache.set(entity.get_key(), entity)
+        self.cache.touch(entity.get_key(), entity.get_ttl())
         return True
 
     def put(self, meta, entity: CacheableEntity) -> bool:
-        self.cache.set(entity.key, entity)
-        self.cache.touch(entity.key, entity.ttl)
+        self.cache.set(entity.get_key(), entity)
+        self.cache.touch(entity.get_key(), entity.get_ttl())
         return True
 
     def get(self, meta: Any, key: str) -> Optional[CacheableEntity]:
@@ -53,8 +53,8 @@ class InMemoryCachingService(CachingService):
     def contains_key(self, meta: Any, key: str) -> bool:
         return self.get(meta, key) is not None
 
-    def invalidate(self, meta: Any, key: str) -> bool:
-        self.cache.delete(key)
+    def invalidate(self, meta: Any, keys: List[str]) -> bool:
+        self.cache.delete_many(keys)
         return True
 
     def invalidate_all(self) -> None:
@@ -64,6 +64,7 @@ class InMemoryCachingService(CachingService):
         for entity in entities:
             if entity.is_dirty:
                 entity.is_dirty = False
+                self.cache.set(entity.get_key(), entity)
         return True
 
     def flush_dirty_entries(self, meta) -> None:

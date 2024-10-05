@@ -1,11 +1,16 @@
-from typing import Any
-
+from abc import abstractmethod
 from middleware.entity.entity import BaseEntity
 
 
 class CacheableEntity(BaseEntity):
-    key: Any
-    ttl: Any = 31536000
+    @abstractmethod
+    def get_key(self):
+        pass
+
+    @abstractmethod
+    def get_ttl(self):
+        pass
+
 
 
 

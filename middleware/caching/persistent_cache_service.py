@@ -10,8 +10,8 @@ from django.core.cache import cache
 from middleware.entity.cache_entity import CacheableEntity
 from middleware.repository.crud_repository import CrudRepository
 
-
 logger = logging.getLogger('django')
+
 
 class PersistentCachingService(CachingService):
     _instance = None
@@ -31,23 +31,22 @@ class PersistentCachingService(CachingService):
         pass
 
     def put_and_write_back(self, meta, entity: CacheableEntity) -> bool:
-        self.cache.set(entity.key, entity)
-        self.cache.touch(entity.key, entity.ttl)
+        self.put(meta, entity)
         self.write_back(meta, [entity])
         return True
 
     def put(self, meta, entity: CacheableEntity) -> bool:
-        self.cache.set(entity.key, entity)
-        self.cache.touch(entity.key, entity.ttl)
+        self.cache.set(entity.get_key(), entity)
+        self.cache.touch(entity.get_key(), entity.get_ttl())
         return True
 
     def get(self, meta: Any, key: str) -> Optional[CacheableEntity]:
         entity = self.cache.get(key)
         if entity is None:
-            entities = self.repository.find_by_key(meta, key)
+            entity = self.repository.find_by_key(meta, key)
             if entity is None:
                 return None
-            self.cache.put_and_write_back(entities[0], entity.ttl)
+            self.put(meta, entity)
         return self.cache.get(key)
 
     def remove(self, key: str) -> bool:
@@ -59,16 +58,13 @@ class PersistentCachingService(CachingService):
     def contains_key(self, meta: Any, key: str) -> bool:
         return self.get(meta, key) is not None
 
-    def invalidate(self, meta: Any, key: str) -> bool:
-        self.cache.delete(key)
-        entities = self.repository.find_by_key(meta, key)
+    def invalidate(self, meta: Any, keys: List[str]) -> bool:
+        self.cache.delete_many(keys)
+        entities = self.repository.find_all_by_key(meta, keys)
         if entities is not None:
             for entity in entities:
-                if not isinstance(entity, CacheableEntity) and isinstance(entity, dict):
-                    entity = CacheableEntity.from_dict(entity)
                 entity.expiration = now()
-                self.repository.update_all(meta, [entity])
-                return self.remove(key)
+        self.repository.update_all(meta, entities)
         return True
 
     def invalidate_all(self) -> None:

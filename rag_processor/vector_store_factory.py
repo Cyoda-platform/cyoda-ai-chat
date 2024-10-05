@@ -6,7 +6,7 @@ from langchain_community.vectorstores import Chroma
 from common_utils.config import (
     VECTOR_STORE,
     CASSANDRA_VECTOR_STORE_KEYSPACE,
-    RESET_DATA
+    RESET_RAG_DATA
 )
 from middleware.repository.cassandra.cassandra_connection import CassandraConnection, CASSANDRA
 
@@ -20,7 +20,7 @@ def create_vector_store(path, splits):
             session = CassandraConnection().get_session()
             table_name = f"cassandra_vector_{path}".replace("/", "")
             try:
-                if RESET_DATA.lower() == "true":
+                if RESET_RAG_DATA.lower() == "true":
                     cassio.config.resolve_session().execute(
                         f"DROP TABLE {cassio.config.resolve_keyspace()}.{table_name};"
                     )
@@ -30,7 +30,7 @@ def create_vector_store(path, splits):
                                   table_name=table_name,
                                   session=session,
                                   keyspace=CASSANDRA_VECTOR_STORE_KEYSPACE)
-            if RESET_DATA.lower() == "true":
+            if RESET_RAG_DATA.lower() == "true":
                 cassandra.add_documents(splits)
             return cassandra
 

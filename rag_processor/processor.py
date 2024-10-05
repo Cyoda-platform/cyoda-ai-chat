@@ -70,6 +70,7 @@ class RagProcessor(ABC):
     ) -> Optional[ChatOpenAI]:
         """Initializes the language model with the OpenAI API key."""
         if INIT_LLM == "true":
+            logger.info("INITIALIZING LLM")
             return ChatOpenAI(
                 model=model,
                 openai_api_key=OPENAI_API_KEY,

@@ -37,7 +37,7 @@ class CachingService(ABC):
         pass
 
     @abstractmethod
-    def invalidate(self, meta: Any, key: str) -> bool:
+    def invalidate(self, meta: Any, keys: List[str]) -> bool:
         pass
 
     @abstractmethod

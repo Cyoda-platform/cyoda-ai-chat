@@ -5,9 +5,12 @@ from common_utils.utils import expiration_date, now
 from middleware.entity.cacheable_entity import CacheableEntity
 from middleware.entity.cyoda_entity import CyodaEntity
 
+CACHE_ENTITY = "cache_entity"
+
 
 @dataclass
 class CacheEntity(CacheableEntity, CyodaEntity):
+
     technical_id: Any = field(init=False, default=None, repr=False, metadata={"include_in_dict":False})
     key: Any
     value: Any
@@ -34,6 +37,13 @@ class CacheEntity(CacheableEntity, CyodaEntity):
         )
         entity.technical_id = data.get('technical_id', None)
         return entity
+
+    def get_key(self):
+        return self.key
+
+    def get_ttl(self):
+        return self.ttl
+
 
     @staticmethod
     def dummy():
@@ -79,7 +89,7 @@ class CacheEntity(CacheableEntity, CyodaEntity):
 
 
     def get_cyoda_meta(self):
-        return {"entity_model": "cache_entity",
+        return {"entity_model": CACHE_ENTITY,
                 "entity_version": "1",
                 "update_transition": "invalidate"}
 

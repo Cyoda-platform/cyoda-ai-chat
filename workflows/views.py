@@ -13,7 +13,7 @@ interactor = WorkflowsInteractor(WorkflowProcessor(), WorkflowGenerationService(
 chat_id_prefix = "workflow"
 
 
-class InitialWorkflowView():
+class InitialWorkflowView(views.APIView):
 
     def post(self, request, *args, **kwargs):
         return config_view_functions.initial(request, interactor, chat_id_prefix)
@@ -23,7 +23,7 @@ class ChatWorkflowInitializedView(views.APIView):
     def get(self, request):
         return config_view_functions.is_initialized(request, interactor, chat_id_prefix)
 
-class ChatWorkflowView():
+class ChatWorkflowView(views.APIView):
 
     def post(self, request, *args, **kwargs):
         try:
@@ -55,12 +55,12 @@ class ChatWorkflowView():
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class ChatWorkflowClearView():
+class ChatWorkflowClearView(views.APIView):
 
     def get(self, request):
         return config_view_functions.chat_clear(request, interactor, chat_id_prefix)
 
-class ReturnDataView():
+class ReturnDataView(views.APIView):
 
     def get(self, request):
         return config_view_functions.return_data(interactor, RETURN_DATA)
@@ -77,7 +77,7 @@ class ChatWorkflowGetChatHistoryView(views.APIView):
         return config_view_functions.get_history(request, interactor, chat_id_prefix)
 
 
-class GenerateWorkflowConfigView():
+class GenerateWorkflowConfigView(views.APIView):
 
     def post(self, request, *args, **kwargs):
         logger.info("Starting GenerateWorkflowConfigView")

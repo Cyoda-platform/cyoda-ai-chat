@@ -2,15 +2,14 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from typing import Any, Dict, List
 
-from websockets.utils import generate_key
-
-from common_utils.utils import now, timestamp_before
-from middleware.entity.cache_entity import CacheEntity
+from common_utils.utils import now, timestamp_before, expiration_date
 from middleware.entity.cacheable_entity import CacheableEntity
 from middleware.entity.cyoda_entity import CyodaEntity
 
+CHAT_HISTORY_ENTITY = "chat_history_entity"
 
 chat_history_entity_prefix= "chat_history_entity"
+ttl = 30000
 
 @dataclass
 class ChatHistoryMessage:
@@ -29,6 +28,7 @@ class ChatHistoryEntity(CacheableEntity, CyodaEntity):
     timestamp: Any
     messages: List[ChatHistoryMessage]
     is_dirty: bool
+    expiration: Any = expiration_date(31536000)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -53,8 +53,14 @@ class ChatHistoryEntity(CacheableEntity, CyodaEntity):
         entity.technical_id = data.get('technical_id', None)
         return entity
 
-    def add_message(self, question: str, answer: str, return_object: str):
-        chat_history_message = ChatHistoryMessage(question=question, answer=answer, return_object=return_object)
+
+    def get_key(self):
+            return self.key
+
+    def get_ttl(self):
+        return ttl
+
+    def add_message(self, chat_history_message: ChatHistoryMessage):
         self.messages.append(chat_history_message)
 
     @staticmethod
@@ -90,7 +96,13 @@ class ChatHistoryEntity(CacheableEntity, CyodaEntity):
                 {
                     "jsonPath": "$.timestamp",
                     "operatorType": "GREATER_OR_EQUAL",
-                    "value": timestamp_before(432000),
+                    "value": timestamp_before(173000),
+                    "type": "simple"
+                },
+                {
+                    "jsonPath": "$.expiration",
+                    "operatorType": "GREATER_OR_EQUAL",
+                    "value": now(),
                     "type": "simple"
                 }
             ],
@@ -100,7 +112,7 @@ class ChatHistoryEntity(CacheableEntity, CyodaEntity):
 
 
     def get_cyoda_meta(self):
-        return {"entity_model": "chat_history_entity",
+        return {"entity_model": CHAT_HISTORY_ENTITY,
                 "entity_version": "1",
                 "update_transition": "invalidate"}
 
@@ -111,7 +123,6 @@ class ChatHistoryEntity(CacheableEntity, CyodaEntity):
 
     def get_meta_by_id(self, key):
         meta = self.get_meta()
-        key = self.generate_key(key)
         meta.update({"get_by_id_condition": self.get_by_id_condition(key)})
         return meta
 
