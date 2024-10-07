@@ -3,6 +3,7 @@ import logging
 from rest_framework.response import Response
 from rest_framework import status, views
 
+from common_utils.utils import get_user_history_answer
 from .logic.interactor import TrinoInteractor
 from .logic.prompts import RETURN_DATA
 from .logic.processor import TrinoProcessor
@@ -70,7 +71,10 @@ class ChatTrinoView(views.APIView):
                     {"success": False, "message": "chat_id is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.chat(token, chat_id, request.data.get("question"), "None", "None")
+            question = request.data.get("question")
+            response = interactor.chat(token, chat_id, question, "None", "None")
+            answer = get_user_history_answer(response)
+            interactor.add_user_chat_hitory(token, chat_id, question, answer, "chat")
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error processing trino chat: %s", e)
@@ -85,7 +89,7 @@ class ChatTrinoClearView(views.APIView):
     def get(self, request):
         return config_view_functions.chat_clear(request, interactor, chat_id_prefix)
 
-
+#todo add to internal chat history
 class ChatTrinoRunQueryView(views.APIView):
 
     def post(self, request, *args, **kwargs):
@@ -104,7 +108,7 @@ class ChatTrinoRunQueryView(views.APIView):
 class ReturnDataView(views.APIView):
 
     def get(self, request):
-        return config_view_functions.return_data(interactor, RETURN_DATA)
+        return config_view_functions.return_data(RETURN_DATA)
 
 
 class ChatTrinoUpdateIdView(views.APIView):
@@ -116,3 +120,13 @@ class ChatTrinoGetChatHistoryView(views.APIView):
 
     def get(self, request):
         return config_view_functions.get_history(request, interactor, chat_id_prefix)
+
+class ChatSaveChatView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.write_back_chat_cache(request, interactor, chat_id_prefix)
+
+class ChatTrinoGetUserChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_user_chat_history(request, interactor, chat_id_prefix)

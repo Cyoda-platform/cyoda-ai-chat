@@ -22,7 +22,7 @@ def create_vector_store(path, splits):
             try:
                 if RESET_RAG_DATA.lower() == "true":
                     cassio.config.resolve_session().execute(
-                        f"DROP TABLE {cassio.config.resolve_keyspace()}.{table_name};"
+                        f"DROP TABLE IF EXISTS {cassio.config.resolve_keyspace()}.{table_name};"
                     )
             except Exception as e:
                 logging.error(str(e))

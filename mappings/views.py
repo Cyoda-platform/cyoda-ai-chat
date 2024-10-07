@@ -1,8 +1,10 @@
+import json
 import logging
 
 from rest_framework.response import Response
 from rest_framework import status, views
 
+from common_utils.utils import get_user_history_answer
 from .logic.processor import MappingProcessor
 from .logic.prompts import RETURN_DATA
 from .logic.interactor import MappingsInteractor
@@ -38,12 +40,13 @@ class InitialMappingView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            response = interactor.initialize_mapping(
+            interactor.initialize_mapping(
                 token,
                 chat_id,
                 ds_input,
                 entity_name,
             )
+            response = interactor.initialize_chat(token, chat_id, "None")
 
             logger.info(
                 "Initial mapping request processed for chat_id: %s",
@@ -99,6 +102,8 @@ class ChatMappingView(views.APIView):
                 "Chat mapping request processed for chat_id: %s",
                 chat_id,
             )
+            answer = get_user_history_answer(response)
+            interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error processing chat mapping request: %s", e)
@@ -117,7 +122,7 @@ class ChatMappingClearView(views.APIView):
 class ReturnDataView(views.APIView):
 
     def get(self, request):
-        return config_view_functions.return_data(interactor, RETURN_DATA)
+        return config_view_functions.return_data(RETURN_DATA)
 
 
 class ChatMappingUpdateIdView(views.APIView):
@@ -129,3 +134,14 @@ class ChatMappingGetChatHistoryView(views.APIView):
 
     def get(self, request):
         return config_view_functions.get_history(request, interactor, chat_id_prefix)
+
+class ChatSaveChatView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.write_back_chat_cache(request, interactor, chat_id_prefix)
+
+class ChatMappingGetUserChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_user_chat_history(request, interactor, chat_id_prefix)
+

@@ -10,4 +10,6 @@ urlpatterns = [
     path('initialized', views.ChatTrinoInitializedView.as_view(), name='trino-initialized'),
     path('chat-history', views.ChatTrinoGetChatHistoryView.as_view(), name='history'),
     path('update-id', views.ChatTrinoUpdateIdView.as_view(), name='update-id'),
+    path('save-chat', views.ChatSaveChatView.as_view(), name='save-chat'),
+    path('user-chat-history', views.ChatTrinoGetUserChatHistoryView.as_view(), name='user-chat-history'),
 ]

@@ -47,6 +47,8 @@ class WorkflowsInteractor(ConfigInteractor):
 
             if return_object == prompts.Keys.GENERATE_WORKFLOW_FROM_IMAGE.value:
                 image_file = json_data.get('file')
+                if image_file is None:
+                    return {"success": False, "message": "image_file is missing"}
                 workflow_id = self._generate_workflow_from_image_file(chat_id, token, question, class_name, image_file)
                 return {"success": True,
                         "message": f"Workflow id = {workflow_id}"}
@@ -76,7 +78,9 @@ class WorkflowsInteractor(ConfigInteractor):
 
     def parse_request_data(self, request):
         if 'multipart/form-data' in request.content_type:
-            return json.loads(request.data.get('json_data'))
+            data = json.loads(request.data.get('json_data'))
+            data['file'] = request.data.get('file')
+            return data
         return request.data
 
     def _generate_workflow_from_image_url(self, chat_id, token, question, class_name):

@@ -3,6 +3,8 @@ import logging
 from rest_framework import status
 from rest_framework.response import Response
 from django.core.exceptions import BadRequest, ObjectDoesNotExist
+
+from common_utils.utils import get_user_history_answer
 from config_generator.config_interactor import ConfigInteractor
 
 logger = logging.getLogger("django")
@@ -94,7 +96,8 @@ def chat(request, interactor: ConfigInteractor, chat_id_prefix):
         logger.info(
             "Chat connection request processed for chat_id: %s", chat_id
         )
-        add_user_chat_hitory(interactor, token, chat_id, question, response.get('message', ''), return_object)
+        answer = get_user_history_answer(response)
+        interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
         return Response(response, status=status.HTTP_200_OK)
     except BadRequest as e:
         logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
@@ -231,10 +234,6 @@ def get_user_chat_history(request, interactor: ConfigInteractor, chat_id_prefix)
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-def add_user_chat_hitory(interactor: ConfigInteractor, token, chat_id, question, answer, return_object):
-        interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
-        logger.info("add_user_chat_hitory for chat_id: %s", chat_id)
-        return True
 
 def write_back_chat_cache(request, interactor, chat_id_prefix):
     try:

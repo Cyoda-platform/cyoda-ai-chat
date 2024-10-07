@@ -105,6 +105,8 @@ class CyodaService(CrudRepository):
             entities = []
             for key in keys:
                 search_result = self._search_entities(meta, key)
+                if search_result.get('page').get('totalElements', 0) == 0:
+                    return []
                 result_entities = self.convert_to_entities(search_result)
                 base_entities = [base_entity_from_dict(meta["entity_model"], entity) for entity in result_entities]
                 entities.extend(base_entities)
@@ -123,6 +125,8 @@ class CyodaService(CrudRepository):
         try:
             search_result = self._search_entities(meta, key)
             # Convert search results to CacheEntity
+            if search_result.get('page').get('totalElements', 0) == 0:
+                return None
             result_entities = self.convert_to_entities(search_result)
             entity = base_entity_from_dict(meta["entity_model"], result_entities[0])
             logger.info(f"Successfully retrieved CacheEntity for key '{key}'.")
@@ -319,7 +323,6 @@ class CyodaService(CrudRepository):
                 return entities
             else:
                 raise Exception(f"Get search result failed: {response.status_code} {response.text}")
-
 
         return entities
 

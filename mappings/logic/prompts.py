@@ -8,6 +8,7 @@ class Keys(Enum):
     AUTOCOMPLETE = "autocomplete"
     COLUMNS = "columns"
     TRANSFORMERS = "transformers"
+    SOURCES = "sources"
 
 
 RETURN_DATA = {
@@ -17,6 +18,7 @@ RETURN_DATA = {
     Keys.AUTOCOMPLETE.value: "Return only the relevant code for autocomplete.",
     Keys.COLUMNS.value: 'Return only column mapping json object which contains srcColumnPath and etc inside "column" attribute. Add to this json one more attribute "action" with the value either add or delete depending on the question. Return inside an array. Remove any leading text',
     Keys.TRANSFORMERS.value: "Return a relevant transformerKey for this column mapping from the list of available transformers. Return only transformerKey WITHOUT any other text.",
+    Keys.SOURCES.value: "",
 }
 
 MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}? What are the input attributes? How do does input correspond to the entity? Which attributes can be mapped from the input to the entity. Return json array in the form of [src_json_path:dst_json_path]. Use your common knowledge and semantic analysis."

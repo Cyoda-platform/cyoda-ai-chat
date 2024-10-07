@@ -1,6 +1,8 @@
 import logging
 from typing import Optional
 
+from langchain.memory import ConversationBufferMemory
+
 from common_utils.config import (
     LLM_TEMPERATURE_TRINO,
     LLM_MAX_TOKENS_TRINO,
@@ -14,6 +16,7 @@ from common_utils.config import (
 )
 from langchain_community.utilities.sql_database import SQLDatabase
 
+from rag_processor.chat_memory_factory import get_session_history
 from rag_processor.processor import RagProcessor
 from langchain.agents import AgentExecutor, create_tool_calling_agent, tool
 from langchain_core.prompts import ChatPromptTemplate
@@ -97,9 +100,14 @@ class TrinoProcessor(RagProcessor):
             ]
         )
 
+        memory = ConversationBufferMemory(
+            memory_key="chat_history",
+            return_messages=True
+        )
+
         agent = create_tool_calling_agent(self.llm, tools, prompt)
         agent_executor = AgentExecutor(
-            agent=agent, tools=tools, verbose=True, vectorstore=self.vectorstore
+            agent=agent, tools=tools, verbose=True, vectorstore=self.vectorstore, memory=memory,
         )
         return agent_executor
 
@@ -206,7 +214,6 @@ class TrinoProcessor(RagProcessor):
         )
         try:
             answer = self.agent_executor.invoke({"input": input_prompt})
-            self.chat_history.add_to_chat_history(chat_id, str(question), str(answer['output']))
             return answer['output']
         except Exception as e:
             logger.error("Error in ask_question_agent: %s", e, exc_info=True)

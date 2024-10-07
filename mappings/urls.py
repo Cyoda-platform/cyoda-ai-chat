@@ -9,4 +9,6 @@ urlpatterns = [
     path('initialized', views.ChatMappingInitializedView.as_view(), name='mappings-initialized'),
     path('chat-history', views.ChatMappingGetChatHistoryView.as_view(), name='history'),
     path('update-id', views.ChatMappingUpdateIdView.as_view(), name='update-id'),
+    path('save-chat', views.ChatSaveChatView.as_view(), name='save-chat'),
+    path('user-chat-history', views.ChatMappingGetUserChatHistoryView.as_view(), name='user-chat-history'),
 ]

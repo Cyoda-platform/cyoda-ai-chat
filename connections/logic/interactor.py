@@ -59,9 +59,9 @@ class ConnectionsInteractor(ConfigInteractor):
             if handler:
                 # Check if the handler requires the token parameter
                 if return_object == prompts.Keys.IMPORT_CONNECTION.value:
-                    return handler(token=token, chat_id=chat_id, question=question)
+                    return {"success": True, "message": handler(token=token, chat_id=chat_id, question=question)}
                 else:
-                    return handler(chat_id, question)
+                    return {"success": True, "message": handler(chat_id, question)}
             else:
                 # Default action if no handler is found
                 result = self.processor.ask_question(chat_id, question)

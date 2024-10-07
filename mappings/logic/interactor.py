@@ -43,6 +43,8 @@ class MappingsInteractor(ConfigInteractor):
         return_string = prompts.RETURN_DATA.get(return_object, "")
         ai_question = f"{question}. {current_script} {return_string}"
         logger.info("Asking question: %s", ai_question)
+        if return_object == prompts.Keys.SOURCES.value:
+            return self.handle_additional_sources(chat_id, question)
         if return_object == prompts.Keys.TRANSFORMERS.value:
             return self._process_transformers(question)
         result = self.processor.ask_question(chat_id, ai_question)
@@ -148,6 +150,10 @@ class MappingsInteractor(ConfigInteractor):
         """
         if chat_id in initialized_set:
             initialized_set.remove(chat_id)
+
+    def handle_additional_sources(self, chat_id, question):
+        urls = question.split(", ")
+        return self.processor.load_additional_rag_sources(urls)
 
     def _extract_date_info(self, question):
         data = json.loads(question)

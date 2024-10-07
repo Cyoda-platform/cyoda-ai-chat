@@ -2,6 +2,8 @@ import logging
 
 from rest_framework.response import Response
 from rest_framework import status, views
+
+from common_utils.utils import get_user_history_answer
 from .logic.interactor import WorkflowsInteractor
 from .logic.prompts import RETURN_DATA
 from .logic.processor import WorkflowProcessor
@@ -47,8 +49,10 @@ class ChatWorkflowView(views.APIView):
 
             question = json_data.get("question")
 
-            response_data = interactor.chat(token, chat_id, question, return_object, json_data)
-            return Response(response_data)
+            response = interactor.chat(token, chat_id, question, return_object, json_data)
+            answer = get_user_history_answer(response)
+            interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
+            return Response(response)
         except Exception as e:
             logger.error(f"Error processing chat workflow: {e}")
             return Response({"success": False, "message": f"Error processing chat workflow: {e}"},
@@ -63,7 +67,7 @@ class ChatWorkflowClearView(views.APIView):
 class ReturnDataView(views.APIView):
 
     def get(self, request):
-        return config_view_functions.return_data(interactor, RETURN_DATA)
+        return config_view_functions.return_data(RETURN_DATA)
 
 
 class ChatWorkflowUpdateIdView(views.APIView):
@@ -75,6 +79,16 @@ class ChatWorkflowGetChatHistoryView(views.APIView):
 
     def get(self, request):
         return config_view_functions.get_history(request, interactor, chat_id_prefix)
+
+class ChatSaveChatView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.write_back_chat_cache(request, interactor, chat_id_prefix)
+
+class ChatWorkflowGetUserChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_user_chat_history(request, interactor, chat_id_prefix)
 
 
 class GenerateWorkflowConfigView(views.APIView):

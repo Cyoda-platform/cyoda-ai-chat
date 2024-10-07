@@ -30,7 +30,7 @@ from common_utils.config import (
     WORK_DIR,
 )
 from .vector_store_factory import create_vector_store
-from .chat_memory_factory import get_session_history
+from .chat_memory_factory import get_session_history, init_chat_memory
 
 CONTEXTUALIZE_Q_SYSTEM_PROMPT = """Given a chat history and the latest user question \
         which might reference context in the chat history, formulate a standalone question \
@@ -59,6 +59,7 @@ class RagProcessor(ABC):
         logger.info("Initializing RagProcessor v1...")
         self.llm = self.initialize_llm(temperature, max_tokens, model, openai_api_base)
         self.vectorstore = self.init_vectorstore(path, config_docs)
+        self.memory = self.init_memory()
         self.conversational_rag_chain = self.process_rag_chain(system_prompt)
 
     def initialize_llm(
@@ -95,6 +96,10 @@ class RagProcessor(ABC):
             vstore = create_vector_store(path, splits)
             return vstore
         return None
+
+    def init_memory(self):
+        init_chat_memory()
+
 
     def process_rag_chain(self, qa_system_prompt: str) -> Optional[object]:
         """Processes the RAG chain using the vector store and LLM."""
@@ -169,7 +174,7 @@ class RagProcessor(ABC):
                 docs.extend(self.get_web_xml_docs(xml_urls))
                 splits = self.text_splitter.split_documents(docs)
                 self.vectorstore.add_documents(splits)
-                return {"answer": "Added additional sources successfully"}
+                return {"success": True, "message": "Added additional sources successfully"}
             except Exception as e:
                 logger.error(
                     "An error occurred during adding additional sources: %s",
