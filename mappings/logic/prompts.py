@@ -20,6 +20,7 @@ RETURN_DATA = {
 }
 
 MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}? What are the input attributes? How do does input correspond to the entity? Which attributes can be mapped from the input to the entity. Return json array in the form of [src_json_path:dst_json_path]. Use your common knowledge and semantic analysis."
+MAPPINGS_INITIAL_ADD_ENTITY = "Remember this {} entity json schema: {}."
 MAPPINGS_INITIAL_PROMPT_SCRIPT = "Get {} entity json schema from the context. If you don't have it - return that you do not have data for {} entity and stop execution. Fill in Mappings Questionnaire json based on the input: {}. Return the resulting Questionnaire json."
 
 MAPPINGS_DEFAULT_PROMPTS = [

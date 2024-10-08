@@ -26,7 +26,15 @@ class InitialMappingView(views.APIView):
                 input=serializer.validated_data.get("input", ""),
             )
             try:
+                token = request.headers.get('Authorization')
+                if not token:
+                    return Response(
+                        {"error": "Authorization token is missing"},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+
                 response = interactor.initialize_mapping(
+                    token=token,
                     chat_id=initial_mapping_request.id,
                     ds_input=initial_mapping_request.input,
                     entity=initial_mapping_request.entity,

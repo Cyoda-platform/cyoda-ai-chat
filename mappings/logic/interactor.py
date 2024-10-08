@@ -1,6 +1,8 @@
 import json
 import logging
 from rest_framework.exceptions import APIException
+import common_utils
+from common_utils.config import API_URL
 from common_utils.utils import parse_json
 from .processor import MappingProcessor
 from . import prompts
@@ -23,7 +25,7 @@ class MappingsInteractor:
         logger.info("Initializing MappingsInteractor...")
         self.processor = processor
 
-    def initialize_mapping(self, chat_id, ds_input, entity):
+    def initialize_mapping(self, token, chat_id, ds_input, entity):
         """
         Initializes a mapping for the given chat ID, data source input, and entity.
 
@@ -35,9 +37,15 @@ class MappingsInteractor:
         logger.info(
             "Mapping parameters: Entity=%s, Data source input=%s", entity, ds_input
         )
-        
+
+        model_name, model_version = entity.split(".")
+        entity_response = common_utils.utils.send_get_request(token, API_URL,
+                                                              f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
+        entity_body = entity_response.json()
+
         mappings_cache[chat_id] = ds_input
         questions = [
+            prompts.MAPPINGS_INITIAL_ADD_ENTITY.format(entity, entity_body),
             prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity, entity, ds_input),
         ]
 
