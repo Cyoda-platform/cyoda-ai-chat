@@ -69,12 +69,13 @@ class ConfigInteractor(ABC):
         update_chat_history.add_messages(init_chat_history)
 
         init_user_chat_history = self.get_user_chat_history(token, init_chat_id)
-        update_key = ChatHistoryEntity.generate_key(update_chat_id)
-        meta = self._get_cache_meta(token, update_key, ChatHistoryEntity)
-        update_user_chat_history = init_user_chat_history
-        update_user_chat_history.key = update_key
-        update_user_chat_history.is_dirty = True
-        self.cache_service.put_and_write_back(meta, update_user_chat_history)
+        if init_user_chat_history is not None:
+            update_key = ChatHistoryEntity.generate_key(update_chat_id)
+            meta = self._get_cache_meta(token, update_key, ChatHistoryEntity)
+            update_user_chat_history = init_user_chat_history
+            update_user_chat_history.key = update_key
+            update_user_chat_history.is_dirty = True
+            self.cache_service.put_and_write_back(meta, update_user_chat_history)
 
     def _check_update_chat_integrity(self, token, update_chat_id):
         meta = self._get_cache_meta(token, update_chat_id, CacheEntity)
