@@ -6,10 +6,15 @@ from django.core.exceptions import BadRequest, ObjectDoesNotExist
 
 from common_utils.utils import get_user_history_answer
 from config_generator.config_interactor import ConfigInteractor
+from langchain.globals import set_verbose
+from langchain.globals import set_debug
 
+#set_debug(True)
+#set_verbose(True)
 logger = logging.getLogger("django")
 
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
+
 
 
 def is_initialized(request, interactor: ConfigInteractor, chat_id_prefix):
