@@ -41,12 +41,11 @@ class MappingsInteractor:
         model_name, model_version = entity.split(".")
         entity_response = common_utils.utils.send_get_request(token, API_URL,
                                                               f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
-        entity_body = entity_response.json()
+        entity_body = entity_response.json()['model']
 
         mappings_cache[chat_id] = ds_input
         questions = [
-            prompts.MAPPINGS_INITIAL_ADD_ENTITY.format(entity, entity_body),
-            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity, entity, ds_input),
+            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(ds_input, entity_body),
         ]
 
         logger.info("Mapping init questions list: %s", questions)
