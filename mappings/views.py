@@ -40,13 +40,13 @@ class InitialMappingView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            interactor.initialize_mapping(
+            response = interactor.initialize_mapping(
                 token,
                 chat_id,
                 ds_input,
                 entity_name,
             )
-            response = interactor.initialize_chat(token, chat_id, "None")
+            # response = interactor.initialize_chat(token, chat_id, "None")
 
             logger.info(
                 "Initial mapping request processed for chat_id: %s",
