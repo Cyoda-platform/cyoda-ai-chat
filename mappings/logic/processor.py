@@ -6,12 +6,12 @@ from common_utils.config import (
     LLM_TEMPERATURE_ADD_SCRIPT,
     LLM_MAX_TOKENS_ADD_SCRIPT,
     LLM_MODEL_ADD_SCRIPT,
-    CYODA_AI_CONFIG_GEN_MAPPINGS_PATH
+    CYODA_AI_CONFIG_GEN_MAPPINGS_PATH, CYODA_APP_NAME
 )
 
 logger = logging.getLogger('django')
 
-QA_SYSTEM_PROMPT = """You are a mapping generation code assistant assistant. \
+QA_SYSTEM_PROMPT = """You are a mapping generation code assistant. \
 You are an expert in Javascript Nashorn and understand how it is different from Java and javascript.
 You will be asked to generate Nashorn javascript code to map input to entity. \
 First, analyse the input and the entity and fill in Mapping Questionnaire.
@@ -26,7 +26,7 @@ class MappingProcessor(RagProcessor):
             max_tokens=LLM_MAX_TOKENS_ADD_SCRIPT,
             model=LLM_MODEL_ADD_SCRIPT,
             openai_api_base=None,
-            path=CYODA_AI_CONFIG_GEN_MAPPINGS_PATH,
+            path=f"{CYODA_AI_CONFIG_GEN_MAPPINGS_PATH}/{CYODA_APP_NAME}",
             config_docs=self._get_web_script_docs(),
             system_prompt=QA_SYSTEM_PROMPT
         )

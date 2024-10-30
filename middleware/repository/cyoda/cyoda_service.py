@@ -335,8 +335,9 @@ class CyodaService(CrudRepository):
                 if value is not None and key != "technical_id"
             }
             payload_json = json.dumps(entities_data)
+            update_transition = meta["update_transition"]
             response = send_put_request(meta["token"], API_URL,
-                                        f"{path}/{entity.technical_id}/{meta["update_transition"]}", data=payload_json)
+                                        f"{path}/{entity.technical_id}/{update_transition}", data=payload_json)
             if response.status_code == 200:
                 return entities
             else:

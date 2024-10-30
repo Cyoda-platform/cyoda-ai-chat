@@ -2,6 +2,8 @@ import json
 import logging
 
 from rest_framework.exceptions import APIException
+import common_utils
+from common_utils.config import API_URL
 from common_utils.utils import parse_json
 from config_generator.config_interactor import ConfigInteractor
 from .processor import MappingProcessor
@@ -26,8 +28,12 @@ class MappingsInteractor(ConfigInteractor):
             "Mapping parameters: Entity=%s, Data source input=%s", entity_name, ds_input
         )
         super().initialize_chat(token, chat_id, str(ds_input))
+        model_name, model_version = entity_name.split(".")
+        entity_response = common_utils.utils.send_get_request(token, API_URL,
+                                                              f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
+        entity_body = entity_response.json()['model']
         questions = [
-            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity_name, entity_name, ds_input),
+            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(ds_input, entity_body),
         ]
         logger.info("Mapping init questions list: %s", questions)
         return self._initialize(chat_id, questions)
