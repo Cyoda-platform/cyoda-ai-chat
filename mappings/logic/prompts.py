@@ -28,6 +28,7 @@ MAPPINGS_INITIAL_PROMPT_SCRIPT = "Fill in Mappings Questionnaire json based on t
 MAPPINGS_DEFAULT_PROMPTS = [
     'analyze the script and add all missing inputSrcPaths (they should be available for all input attributes used in the script). Use slash "/" for the jsonpath.',
     "Write a JavaScript Nashorn script to map the given input to the given Cyoda target entity based on Instruction e31a2c74-4c85-4c3b-b0ab-3b0cd7a9fe58",
+    "I have a specific input and a target entity model that I would like you to use for creating a Nashorn script. The previous instruction is just an example of how mapping can be structured. Please only use the following input and target entity without including any additional structures or references from previous instructions.",
 ]
 
 SCRIPT_REFINE_PROMPT = "Provide a list of inputSrcPaths for this script. Write correct inputSrcPaths with a forward slash and wildcard if applicable. Return a json array."
