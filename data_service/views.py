@@ -3,15 +3,14 @@ import logging
 from rest_framework.response import Response
 from rest_framework import status, views
 
-from common_utils.utils import get_user_history_answer
-from .logic.interactor import TrinoInteractor
+from common_utils.utils import get_user_answer
+from .logic.interactor import TrinoInteractor, chat_id_prefix
 from .logic.prompts import RETURN_DATA
 from .logic.processor import TrinoProcessor
 from config_generator import config_view_functions
 
 logger = logging.getLogger("django")
 interactor = TrinoInteractor(TrinoProcessor())
-chat_id_prefix = "trino"
 
 
 class InitialTrinoView(views.APIView):
@@ -73,7 +72,7 @@ class ChatTrinoView(views.APIView):
                 )
             question = request.data.get("question")
             response = interactor.chat(token, chat_id, question, "None", "None")
-            answer = get_user_history_answer(response)
+            answer = get_user_answer(response)
             interactor.add_user_chat_hitory(token, chat_id, question, answer, "chat")
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:

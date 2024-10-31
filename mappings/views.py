@@ -4,15 +4,14 @@ import logging
 from rest_framework.response import Response
 from rest_framework import status, views
 
-from common_utils.utils import get_user_history_answer
+from common_utils.utils import get_user_answer
 from .logic.processor import MappingProcessor
 from .logic.prompts import RETURN_DATA
-from .logic.interactor import MappingsInteractor
+from .logic.interactor import MappingsInteractor, chat_id_prefix
 from config_generator import config_view_functions
 
 logger = logging.getLogger('django')
 interactor = MappingsInteractor(MappingProcessor())
-chat_id_prefix = "mappings"
 
 
 class InitialMappingView(views.APIView):
@@ -102,7 +101,7 @@ class ChatMappingView(views.APIView):
                 "Chat mapping request processed for chat_id: %s",
                 chat_id,
             )
-            answer = get_user_history_answer(response)
+            answer = get_user_answer(response)
             interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:

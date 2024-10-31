@@ -3,8 +3,9 @@ import logging
 from rest_framework.response import Response
 from rest_framework import status, views
 
-from common_utils.utils import get_user_history_answer
-from .logic.interactor import WorkflowsInteractor
+from common_utils.utils import get_user_answer
+from .logic import prompts
+from .logic.interactor import WorkflowsInteractor, chat_id_prefix
 from .logic.prompts import RETURN_DATA
 from .logic.processor import WorkflowProcessor
 from .logic.workflow_gen_service import WorkflowGenerationService
@@ -12,7 +13,6 @@ from config_generator import config_view_functions
 
 logger = logging.getLogger('django')
 interactor = WorkflowsInteractor(WorkflowProcessor(), WorkflowGenerationService())
-chat_id_prefix = "workflow"
 
 
 class InitialWorkflowView(views.APIView):
@@ -50,8 +50,11 @@ class ChatWorkflowView(views.APIView):
             question = json_data.get("question")
 
             response = interactor.chat(token, chat_id, question, return_object, json_data)
-            answer = get_user_history_answer(response)
+            answer = get_user_answer(response)
             interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
+            ##todo need to improve here!
+            if (return_object in [prompts.Keys.GENERATE_WORKFLOW_FROM_URL.value, prompts.Keys.GENERATE_WORKFLOW_FROM_IMAGE.value, prompts.Keys.GENERATE_WORKFLOW.value]):
+                interactor.update_chat_id(token, chat_id, chat_id_prefix + answer.replace("Workflow id = ", ""))
             return Response(response)
         except Exception as e:
             logger.error(f"Error processing chat workflow: {e}")

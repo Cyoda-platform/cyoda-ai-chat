@@ -1,21 +1,22 @@
+import json
 import logging
 
 from rest_framework import status
 from rest_framework.response import Response
 from django.core.exceptions import BadRequest, ObjectDoesNotExist
 
-from common_utils.utils import get_user_history_answer
+from common_utils.utils import get_user_answer
 from config_generator.config_interactor import ConfigInteractor
 from langchain.globals import set_verbose
 from langchain.globals import set_debug
+
+from connections.logic import prompts as connections_prompts
 
 #set_debug(True)
 #set_verbose(True)
 logger = logging.getLogger("django")
 
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
-
-
 
 def is_initialized(request, interactor: ConfigInteractor, chat_id_prefix):
     try:
@@ -101,8 +102,11 @@ def chat(request, interactor: ConfigInteractor, chat_id_prefix):
         logger.info(
             "Chat connection request processed for chat_id: %s", chat_id
         )
-        answer = get_user_history_answer(response)
+        answer = get_user_answer(response)
         interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
+        ##todo need to improve here!
+        if (return_object in [connections_prompts.Keys.IMPORT_CONNECTION.value]):
+            interactor.update_chat_id(token, chat_id, chat_id_prefix + json.loads(answer)["datasource_id"])
         return Response(response, status=status.HTTP_200_OK)
     except BadRequest as e:
         logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)

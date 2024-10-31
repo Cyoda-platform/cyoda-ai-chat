@@ -11,7 +11,7 @@ from jsonschema import validate
 
 logger = logging.getLogger('django')
 
-def get_user_history_answer(response):
+def get_user_answer(response):
     answer = response.get('message', '') if response and isinstance(response, dict) else ''
     if isinstance(answer, dict) or isinstance(answer, list):
         answer = json.dumps(answer)

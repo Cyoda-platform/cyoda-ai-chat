@@ -10,6 +10,7 @@ from .processor import MappingProcessor
 from . import prompts
 
 logger = logging.getLogger('django')
+chat_id_prefix = "mappings"
 
 class MappingsInteractor(ConfigInteractor):
     """

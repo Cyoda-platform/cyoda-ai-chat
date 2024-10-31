@@ -7,6 +7,7 @@ from common_utils.config import WORK_DIR, TRINO_PROMPT_PATH
 
 logger = logging.getLogger("django")
 INIT_REQUESTS_PREFIX = "init"
+chat_id_prefix = "trino"
 
 class TrinoInteractor(ConfigInteractor):
 

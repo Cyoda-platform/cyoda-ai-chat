@@ -2,7 +2,7 @@ import logging
 from rest_framework import status, views
 from rest_framework.response import Response
 from django.core.exceptions import BadRequest, ObjectDoesNotExist
-from .logic.interactor import ConnectionsInteractor
+from .logic.interactor import ConnectionsInteractor, chat_id_prefix
 from .logic.ingestion_service import DataIngestionService
 from .logic.prompts import RETURN_DATA
 from .logic.processor import ConnectionProcessor
@@ -13,8 +13,6 @@ logger = logging.getLogger("django")
 interactor = ConnectionsInteractor(ConnectionProcessor())
 ingestionService = DataIngestionService()
 ERROR_PROCESSING_REQUEST_MESSAGE = "Error processing chat connection request"
-chat_id_prefix = "connections"
-
 
 class InitialConnectionView(views.APIView):
 

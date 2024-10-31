@@ -23,6 +23,7 @@ from . import prompts
 
 logger = logging.getLogger('django')
 
+chat_id_prefix = "workflow"
 
 class WorkflowsInteractor(ConfigInteractor):
     def __init__(self, processor: WorkflowProcessor, workflow_generation_service: WorkflowGenerationService):

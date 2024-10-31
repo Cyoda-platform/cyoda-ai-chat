@@ -29,6 +29,8 @@ from common_utils.utils import (
 
 logger = logging.getLogger("django")
 
+chat_id_prefix = "connections"
+
 class ConnectionsInteractor(ConfigInteractor):
     def __init__(self, processor: ConnectionProcessor):
         super().__init__(processor)
@@ -150,7 +152,8 @@ class ConnectionsInteractor(ConfigInteractor):
     def generate_dto(self, chat_id: str, prompt: str, schema_path: str):
         try:
             result = self.processor.ask_question(chat_id, prompt)
-            return validate_and_parse_json(self.processor, chat_id, result, f"{WORK_DIR}/{schema_path}", MAX_RETRIES_ADD_CONNECTION)
+            return validate_and_parse_json(self.processor, chat_id, result, f"{WORK_DIR}/{schema_path}",
+                                           MAX_RETRIES_ADD_CONNECTION)
         except Exception as e:
             logger.error(f"Error generating DTO for schema {schema_path}: %s", e)
             raise
@@ -167,10 +170,25 @@ class ConnectionsInteractor(ConfigInteractor):
         try:
             endpoint_prompt = prompt.replace("{endpoints}", str(endpoints_list))
             endpoint_configs.extend(self.generate_dto(chat_id, endpoint_prompt, ENDPOINT_JSON_SCHEMA_PATH))
+            for endpoint_config in endpoint_configs:
+                self._process_endpoint_config(endpoint_config)
             endpoint_configs = [config for config in endpoint_configs if config["method"] in ["POST_BODY", "GET"]]
         except Exception as e:
             logger.error("Error generating endpoint DTO: %s", e)
         return endpoint_configs
+
+    @staticmethod
+    def _process_endpoint_config(endpoint_config):
+        try:
+            parameters = endpoint_config.get('parameters', [])
+            for parameter in parameters:
+            # Set 'defaultValue' to None if it's empty or missing
+                if not parameter.get('defaultValue'):
+                    parameter['defaultValue'] = None
+        except KeyError as e:
+            print(f"Missing key in endpoint configuration: {e}")
+        except Exception as e:
+            print(f"An error occurred while processing endpoint config: {e}")
 
     def generate_parameter_dto(self, chat_id: str, prompt: str):
         try:
@@ -187,7 +205,8 @@ class ConnectionsInteractor(ConfigInteractor):
             for parameter in parameters_list:
                 try:
                     parameters_configs.append(validate_and_parse_json(self.processor, chat_id, json.dumps(parameter),
-                                                                           f"{WORK_DIR}/{PARAMETER_JSON_SCHEMA_PATH}", MAX_RETRIES_ADD_CONNECTION))
+                                                                      f"{WORK_DIR}/{PARAMETER_JSON_SCHEMA_PATH}",
+                                                                      MAX_RETRIES_ADD_CONNECTION))
                 except Exception as e:
                     logger.error("Error generating endpoint DTO: %s", e)
             return parameters_configs
@@ -221,3 +240,4 @@ class ConnectionsInteractor(ConfigInteractor):
         except Exception as e:
             logger.error("Error saving data: %s", e)
             raise
+
