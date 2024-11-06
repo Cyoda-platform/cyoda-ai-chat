@@ -2,6 +2,7 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from typing import Any, Dict, List
 
+from common_utils.config import CYODA_ENTITY_VERSION
 from common_utils.utils import now, timestamp_before, expiration_date
 from middleware.entity.cacheable_entity import CacheableEntity
 from middleware.entity.cyoda_entity import CyodaEntity
@@ -113,7 +114,7 @@ class ChatHistoryEntity(CacheableEntity, CyodaEntity):
 
     def get_cyoda_meta(self):
         return {"entity_model": CHAT_HISTORY_ENTITY,
-                "entity_version": "1",
+                "entity_version": CYODA_ENTITY_VERSION,
                 "update_transition": "invalidate"}
 
     def get_meta(self):

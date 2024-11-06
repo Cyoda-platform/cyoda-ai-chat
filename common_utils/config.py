@@ -104,3 +104,13 @@ RESET_MEMORY = get_env_var("RESET_MEMORY")
 CACHE_STORE = get_env_var("CACHE_STORE")
 MEMORY_STORE = get_env_var("MEMORY_STORE")
 CACHE_DB = get_env_var("CACHE_DB")
+
+#cyoda app settings
+CYODA_REPO_URL = get_env_var("CYODA_REPO_URL")
+decoded_bytes_cyoda_api_key = base64.b64decode(get_env_var("CYODA_API_KEY"))
+CYODA_API_KEY = decoded_bytes_cyoda_api_key.decode("utf-8")
+decoded_bytes_cyoda_api_secret = base64.b64decode(get_env_var("CYODA_API_SECRET"))
+CYODA_API_SECRET = decoded_bytes_cyoda_api_secret.decode("utf-8")
+CYODA_ENTITY_VERSION = get_env_var("CYODA_ENTITY_VERSION", "1")
+CYODA_GRPC_ADDRESS = get_env_var("GRPC_ADDRESS")
+CYODA_GRPC_PROCESSOR_TAG = get_env_var("GRPC_PROCESSOR_TAG", "cyoda_ai_chat")

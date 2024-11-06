@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict, field
 from typing import Any
 
+from common_utils.config import CYODA_ENTITY_VERSION
 from common_utils.utils import expiration_date, now
 from middleware.entity.cacheable_entity import CacheableEntity
 from middleware.entity.cyoda_entity import CyodaEntity
@@ -90,7 +91,7 @@ class CacheEntity(CacheableEntity, CyodaEntity):
 
     def get_cyoda_meta(self):
         return {"entity_model": CACHE_ENTITY,
-                "entity_version": "1",
+                "entity_version": CYODA_ENTITY_VERSION,
                 "update_transition": "invalidate"}
 
     def get_meta(self):

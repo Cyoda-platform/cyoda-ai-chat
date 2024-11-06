@@ -51,10 +51,12 @@ def validate_result(parsed_result: str, file_path: str) -> bool:
         logger.error(f"Failed to decode JSON: {e}")
         raise
 
-def get_env_var(name: str) -> str:
+def get_env_var(name: str, default_value: Optional[str] = None) -> str:
     value = os.getenv(name)
     if value is None:
-        logger.warning(f"Environment variable {name} not found.")
+        if default_value is None:
+            logger.warning(f"Environment variable {name} not found.")
+        value = default_value
     return value
 
 def read_file(file_path: str):
@@ -88,7 +90,7 @@ def send_get_request(token: str, api_url: str, path: str) -> Optional[requests.R
     }
     try:
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise an error for bad status codes
+        #todo response.raise_for_status()  # Raise an error for bad status codes
         logger.info(f"GET request to {url} successful.")
         return response
     except requests.exceptions.HTTPError as http_err:

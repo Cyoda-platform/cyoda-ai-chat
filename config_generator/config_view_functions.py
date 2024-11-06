@@ -7,8 +7,6 @@ from django.core.exceptions import BadRequest, ObjectDoesNotExist
 
 from common_utils.utils import get_user_answer
 from config_generator.config_interactor import ConfigInteractor
-from langchain.globals import set_verbose
-from langchain.globals import set_debug
 
 from connections.logic import prompts as connections_prompts
 
@@ -36,7 +34,7 @@ def is_initialized(request, interactor: ConfigInteractor, chat_id_prefix):
         logger.info("Context cleared for chat_id: %s", chat_id)
         return Response(chat_initialized, status=status.HTTP_200_OK)
     except Exception as e:
-        logger.error("Error clearing context: %s", e)
+        logger.error("Error is_initialized: %s", e)
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -93,11 +91,11 @@ def chat(request, interactor: ConfigInteractor, chat_id_prefix):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         response = interactor.chat(
-            token,
-            chat_id,
-            return_object,
-            question,
-            ""
+            token=token,
+            chat_id=chat_id,
+            question=question,
+            return_object=return_object,
+            user_data=""
         )
         logger.info(
             "Chat connection request processed for chat_id: %s", chat_id
@@ -145,7 +143,7 @@ def chat_clear(request, interactor: ConfigInteractor, chat_id_prefix):
         logger.info("Context cleared for chat_id: %s", chat_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
-        logger.error("Error clearing context: %s", e)
+        logger.error("Error chat_clear: %s", e)
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -211,7 +209,7 @@ def get_history(request, interactor: ConfigInteractor, chat_id_prefix):
         logger.info("Context cleared for chat_id: %s", chat_id)
         return Response(messages, status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
-        logger.error("Error clearing context: %s", e)
+        logger.error("Error get_history: %s", e)
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -237,7 +235,7 @@ def get_user_chat_history(request, interactor: ConfigInteractor, chat_id_prefix)
         logger.info("Context cleared for chat_id: %s", chat_id)
         return Response({"success": True, "message": user_chat_history.to_dict() if user_chat_history else []}, status=status.HTTP_200_OK)
     except Exception as e:
-        logger.error("Error clearing context: %s", e)
+        logger.error("Error get_user_chat_history: %s", e)
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -261,7 +259,7 @@ def write_back_chat_cache(request, interactor, chat_id_prefix):
         interactor.save_chat(token, chat_id)
         return Response({"success": True, "message": f"Chat saved: {chat_id}"}, status=status.HTTP_200_OK)
     except Exception as e:
-        logger.error("Error clearing context: %s", e)
+        logger.error("Error write_back_chat_cache: %s", e)
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,

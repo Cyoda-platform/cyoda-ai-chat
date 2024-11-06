@@ -53,7 +53,6 @@ class ConfigInteractor(ABC):
 
     def update_chat_id(self, token, init_chat_id, update_chat_id):
         self._check_update_chat_integrity(token, update_chat_id)
-
         self.is_chat_initialized_helper(token, init_chat_id)
 
         meta = self._get_cache_meta(token, init_chat_id, CacheEntity)
@@ -81,13 +80,13 @@ class ConfigInteractor(ABC):
         meta = self._get_cache_meta(token, update_chat_id, CacheEntity)
         update_cache_entity = self.cache_service.get(meta, update_chat_id)
         if (update_cache_entity is not None):
-            raise Exception(f"update id {update_chat_id} data integrity exception")
+            raise Exception(f"update id {update_chat_id} update_cache_entity data integrity exception")
         update_chat_history = self.get_chat_history(token, update_chat_id)
         if (update_chat_history is not None and update_chat_history):
-            raise Exception(f"update id {update_chat_id} data integrity exception")
+            raise Exception(f"update id {update_chat_id} update_chat_history data integrity exception")
         update_user_chat_history = self.get_user_chat_history(token, update_chat_id)
         if (update_user_chat_history is not None and update_user_chat_history):
-            raise Exception(f"update id {update_chat_id} data integrity exception")
+            raise Exception(f"update id {update_chat_id} update_user_chat_history data integrity exception")
 
     def chat_initialized(self, token, chat_id) -> bool:
         meta = self._get_cache_meta(token, chat_id, CacheEntity)
@@ -121,7 +120,9 @@ class ConfigInteractor(ABC):
         key = ChatHistoryEntity.generate_key(chat_id)
         meta = self._get_cache_meta(token, key, ChatHistoryEntity)
         user_chat_history = self.cache_service.get(meta, key)
-        self.cache_service.write_back(meta, [user_chat_history])
+        #todo check here
+        if user_chat_history is not None:
+            self.cache_service.write_back(meta, [user_chat_history])
 
     def is_chat_initialized_helper(self, token, chat_id) -> bool:
         initialized = self.chat_initialized(token, chat_id)

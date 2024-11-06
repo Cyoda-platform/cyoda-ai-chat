@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+from middleware.repository.cyoda.cyoda_init import init_cyoda
 from middleware.repository.cyoda.cyoda_service import CyodaService
 from middleware.repository.crud_repository import CrudRepository, DBKeys
 
@@ -17,6 +18,7 @@ class RepositoryRegistry:
     def _initialize_services(self):
         self.register(DBKeys.CYODA.value,
                       CyodaService())
+        init_cyoda(CyodaService())
 
     def register(self, name: str, service_instance: CrudRepository):
         if not isinstance(service_instance, CrudRepository):
