@@ -91,11 +91,11 @@ class ChatMappingView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             response = interactor.chat(
-                token,
-                chat_id,
-                return_object,
-                question,
-                user_script
+                token=token,
+                chat_id=chat_id,
+                return_object=return_object,
+                question=question,
+                user_script=user_script
             )
             logger.info(
                 "Chat mapping request processed for chat_id: %s",

@@ -41,14 +41,12 @@ class MappingsInteractor(ConfigInteractor):
 
     def chat(self, token, chat_id, return_object, question, user_script):
         super().chat(token, chat_id, question, return_object, user_script)
-
-        if user_script is not None:
-            user_script: str = json.dumps(json.loads(user_script)["script"]["body"])
-        current_script = (
-            f"Current script: {user_script}."
-            if user_script and return_object != prompts.Keys.AUTOCOMPLETE.value
-            else ""
-        )
+        if user_script is None or return_object == prompts.Keys.AUTOCOMPLETE.value:
+            current_script = ""
+        else:
+            script_body = json.loads(user_script).get("script", {}).get("body")
+            if script_body is not None:
+                current_script = f"Current script: {json.dumps(script_body)}."
         logger.info("Current script: %s", user_script)
         return_string = prompts.RETURN_DATA.get(return_object, "")
         ai_question = f"{question}. {current_script} {return_string}"
