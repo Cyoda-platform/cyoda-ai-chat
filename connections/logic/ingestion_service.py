@@ -46,6 +46,7 @@ class DataIngestionService:
 
         except Exception as e:
             logger.error(f"An error occurred during data ingestion: {str(e)}")
+            logger.exception("An exception occurred")
             raise DataIngestionError(f"Data ingestion failed: {str(e)}") from e
 
     def get_datasource_data(self, token: str, ds_id: str) -> dict:

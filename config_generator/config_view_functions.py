@@ -35,6 +35,7 @@ def is_initialized(request, interactor: ConfigInteractor, chat_id_prefix):
         return Response(chat_initialized, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error("Error is_initialized: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -66,6 +67,7 @@ def initial(request, interactor: ConfigInteractor, chat_id_prefix):
         return Response(response, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error("Error initializing connection: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -119,6 +121,7 @@ def chat(request, interactor: ConfigInteractor, chat_id_prefix):
         )
     except Exception as e:
         logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -144,6 +147,7 @@ def chat_clear(request, interactor: ConfigInteractor, chat_id_prefix):
         return Response(status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         logger.error("Error chat_clear: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -185,6 +189,7 @@ def update_id(request, interactor: ConfigInteractor, chat_id_prefix):
 
     except Exception as e:
         logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -210,6 +215,7 @@ def get_history(request, interactor: ConfigInteractor, chat_id_prefix):
         return Response(messages, status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         logger.error("Error get_history: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -236,6 +242,7 @@ def get_user_chat_history(request, interactor: ConfigInteractor, chat_id_prefix)
         return Response({"success": True, "message": user_chat_history.to_dict() if user_chat_history else []}, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error("Error get_user_chat_history: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -260,6 +267,7 @@ def write_back_chat_cache(request, interactor, chat_id_prefix):
         return Response({"success": True, "message": f"Chat saved: {chat_id}"}, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error("Error write_back_chat_cache: %s", e)
+        logger.exception("An exception occurred")
         return Response(
             {"success": False, "message": f"Error processing chat workflow: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,

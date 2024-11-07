@@ -41,6 +41,7 @@ class CassandraConnection:
             logging.info("Cassandra connection established and initialized successfully.")
         except Exception as e:
             logging.error(f"Error initializing Cassandra: {str(e)}")
+            logger.exception("An exception occurred")
             raise
 
     def create_keyspace_if_not_exists(self, keyspace):
@@ -52,6 +53,7 @@ class CassandraConnection:
             logging.info(f"Keyspace '{keyspace}' ensured to exist.")
         except Exception as e:
             logging.error(f"Error creating keyspace '{keyspace}': {str(e)}")
+            logger.exception("An exception occurred")
             raise
 
     def get_session(self):

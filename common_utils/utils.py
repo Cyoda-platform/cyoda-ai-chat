@@ -66,6 +66,7 @@ def read_file(file_path: str):
             return file.read()
     except Exception as e:
         logger.error(f"Failed to read JSON file {file_path}: {e}")
+        logger.exception("An exception occurred")
         raise
 
 def read_json_file(file_path: str):
@@ -98,6 +99,7 @@ def send_get_request(token: str, api_url: str, path: str) -> Optional[requests.R
         raise
     except Exception as err:
         logger.error(f"Error during GET request to {url}: {err}")
+        logger.exception("An exception occurred")
         raise
 
 def send_post_request(token: str, api_url: str, path: str, data=None, json=None) -> Optional[requests.Response]:
@@ -117,6 +119,7 @@ def send_post_request(token: str, api_url: str, path: str, data=None, json=None)
         raise
     except Exception as err:
         logger.error(f"Error during POST request to {url}: {err}")
+        logger.exception("An exception occurred")
         raise
 
 def send_put_request(token: str, api_url: str, path: str, data=None, json=None) -> Optional[requests.Response]:
@@ -135,6 +138,7 @@ def send_put_request(token: str, api_url: str, path: str, data=None, json=None) 
         logger.error(f"HTTP error during PUT request to {url}: {http_err}")
         raise
     except Exception as err:
+        logger.exception("An exception occurred")
         logger.error(f"Error during PUT request to {url}: {err}")
         raise
 
@@ -154,6 +158,7 @@ def send_delete_request(token: str, api_url: str, path: str) -> Optional[request
         logger.error(f"HTTP error during GET request to {url}: {http_err}")
         raise
     except Exception as err:
+        logger.exception("An exception occurred")
         logger.error(f"Error during GET request to {url}: {err}")
         raise
 
@@ -177,6 +182,7 @@ def validate_and_parse_json(
         try:
             parsed_data = parse_json(data)
         except Exception as e:
+            logger.exception("An exception occurred")
             logger.error(f"Failed to parse JSON: {e}")
             raise ValueError("Invalid JSON data provided.") from e
 
@@ -200,6 +206,7 @@ def validate_and_parse_json(
                     retry_result = processor.ask_question(chat_id, question)
                     parsed_data = parse_json(retry_result)
             except Exception as e:
+                logger.exception("An exception occurred")
                 logger.error("Maximum retry attempts reached. Validation failed.")
             finally:
                 attempt += 1

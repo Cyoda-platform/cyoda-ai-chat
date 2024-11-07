@@ -54,6 +54,7 @@ class InitialMappingView(views.APIView):
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error processing initial mapping request: %s", e)
+            logger.exception("An exception occurred")
             return Response(
                 {"success": False, "message": f"Failed to process initial mapping request: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -106,6 +107,7 @@ class ChatMappingView(views.APIView):
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error processing chat mapping request: %s", e)
+            logger.exception("An exception occurred")
             return Response(
                 {"success": False, "message": f"Failed to initialize connection: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

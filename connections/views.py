@@ -102,6 +102,7 @@ class ChatIngestDataView(views.APIView):
             )
         except Exception as e:
             logger.error(f"{ERROR_PROCESSING_REQUEST_MESSAGE}: {e}")
+            logger.exception("An exception occurred")
             return Response(
                 {"success": False, "message": f"Error processing chat workflow: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -30,6 +30,7 @@ class ConfigInteractor(ABC):
             self.cache_service.put_and_write_back(meta, entity)
             return {"success": True, "message": chat_id}
         except Exception as e:
+            logger.exception("An exception occurred")
             raise e
 
     @abstractmethod
@@ -49,6 +50,7 @@ class ConfigInteractor(ABC):
                 self.cache_service.invalidate(meta, [key])
             return {"success": True, "message": f"Chat context with id {chat_id} cleared."}
         except Exception as e:
+            logger.exception("An exception occurred")
             raise e
 
     def update_chat_id(self, token, init_chat_id, update_chat_id):

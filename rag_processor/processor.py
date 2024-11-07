@@ -181,6 +181,7 @@ class RagProcessor(ABC):
                     e,
                     exc_info=True,
                 )
+                logger.exception("An exception occurred")
                 return {"error": str(e)}
         return {"error": "Vectorstore not initialized."}
 

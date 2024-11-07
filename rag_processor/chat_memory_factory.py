@@ -20,6 +20,7 @@ def init_chat_memory():
                 )
         except Exception as e:
             logging.error(str(e))
+            logger.exception("An exception occurred")
 
 def get_session_history(session_id: str) -> BaseChatMessageHistory:
     if MEMORY_STORE.upper() == CASSANDRA:

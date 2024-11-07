@@ -118,6 +118,7 @@ class CyodaService(CrudRepository):
             logger.error(f"Timeout while reading key '{key}': {te}")
         except Exception as e:
             logger.error(f"Error reading key '{key}': {e}")
+            logger.exception("An exception occurred")
 
         return None
 
@@ -138,6 +139,7 @@ class CyodaService(CrudRepository):
             logger.error(f"Timeout while reading key '{key}': {te}")
         except Exception as e:
             logger.error(f"Error reading key '{key}': {e}")
+            logger.exception("An exception occurred")
 
         return None
 
@@ -156,6 +158,7 @@ class CyodaService(CrudRepository):
             return True
         except Exception as e:
             logger.error(f"Exception occurred while saving entity: {e}")
+            logger.exception("An exception occurred")
             raise e
 
     def delete(self, meta, entity: Any) -> None:
@@ -179,6 +182,7 @@ class CyodaService(CrudRepository):
         except Exception as e:
             logger.error(
                 f"An error occurred while saving schema for entity '{entity_name}' with version '{version}': {e}")
+            logger.exception("An exception occurred")
             return {'error': str(e)}
 
     @staticmethod
@@ -199,6 +203,7 @@ class CyodaService(CrudRepository):
         except Exception as e:
             logger.error(
                 f"An error occurred while locking schema for entity '{entity_name}' with version '{version}': {e}")
+            logger.exception("An exception occurred")
             return {'error': str(e)}
 
     @staticmethod
@@ -218,6 +223,7 @@ class CyodaService(CrudRepository):
 
         except Exception as e:
             logger.error(f"An error occurred while saving new entity '{model}' with version '{version}': {e}")
+            logger.exception("An exception occurred")
             raise e
 
     @staticmethod

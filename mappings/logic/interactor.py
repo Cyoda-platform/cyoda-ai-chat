@@ -41,6 +41,7 @@ class MappingsInteractor(ConfigInteractor):
 
     def chat(self, token, chat_id, return_object, question, user_script):
         super().chat(token, chat_id, question, return_object, user_script)
+        current_script = ""
         if user_script is None or return_object == prompts.Keys.AUTOCOMPLETE.value:
             current_script = ""
         else:
@@ -69,6 +70,7 @@ class MappingsInteractor(ConfigInteractor):
             logger.error(
                 "An error occurred during initialization: %s", e, exc_info=True
             )
+            logger.exception("An exception occurred")
             return {"error": str(e)}
 
     def _process_return_object(self, chat_id, return_object, result):

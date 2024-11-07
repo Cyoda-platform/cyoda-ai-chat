@@ -26,6 +26,7 @@ def create_vector_store(path, splits):
                     )
             except Exception as e:
                 logging.error(str(e))
+                logger.exception("An exception occurred")
             cassandra = Cassandra(embedding=OpenAIEmbeddings(),
                                   table_name=table_name,
                                   session=session,
@@ -43,4 +44,5 @@ def create_vector_store(path, splits):
 
     except Exception as e:
         logging.error(f"Error creating vector store: {str(e)}")
+        logger.exception("An exception occurred")
         raise
