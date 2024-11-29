@@ -23,7 +23,7 @@ RETURN_DATA = {
 
 #MAPPINGS_INITIAL_PROMPT = "Input: {}. Target Entity: {}. What is the structure of the {}? What are the input attributes? How do does input correspond to the entity? Which attributes can be mapped from the input to the entity. Return json array in the form of [src_json_path:dst_json_path]. Use your common knowledge and semantic analysis."
 #MAPPINGS_INITIAL_ADD_ENTITY = "Remember the input {} and the target entity model: {}. You do not need to return anything."
-MAPPINGS_INITIAL_PROMPT_CYODA = "Please map user input {} to the target entity {}."
+MAPPINGS_INITIAL_PROMPT_CYODA = "Please map user input {} to the target entity {}. Always add line breaks to the code, so that it is well formatted."
 MAPPINGS_INITIAL_PROMPT_COBI = "Fill in Mappings Questionnaire json based on the input: {} and target entity model {}. Return the resulting Questionnaire json."
 
 MAPPINGS_DEFAULT_PROMPTS = [

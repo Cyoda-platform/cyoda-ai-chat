@@ -34,6 +34,7 @@ class MappingsInteractor(ConfigInteractor):
                                                               f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
         entity_body = entity_response.json()['model']
         if CYODA_APP_NAME.lower() == 'cyoda':
+            logger.info("Working with cyoda model")
             questions = [
                 prompts.MAPPINGS_INITIAL_PROMPT_CYODA.format(ds_input, entity_body),
             ]
@@ -55,7 +56,7 @@ class MappingsInteractor(ConfigInteractor):
                 current_script = f"Current script: {json.dumps(script_body)}."
         logger.info("Current script: %s", user_script)
         return_string = prompts.RETURN_DATA.get(return_object, "")
-        ai_question = f"{question}. {current_script} {return_string}. Always add line breaks to the code."
+        ai_question = f"{question}. {current_script} {return_string}. Always add line breaks to the code, so that it is well formatted."
         logger.info("Asking question: %s", ai_question)
         if return_object == prompts.Keys.SOURCES.value:
             return self.handle_additional_sources(chat_id, question)
@@ -70,7 +71,7 @@ class MappingsInteractor(ConfigInteractor):
             for question in questions:
                 result = self.processor.ask_question(chat_id, question)
                 logger.info(result)
-            return {"success": True, "message": chat_id}
+            return {"success": True, "message": {"chat_id": chat_id, "result": result}}
         except Exception as e:
             logger.error(
                 "An error occurred during initialization: %s", e, exc_info=True
