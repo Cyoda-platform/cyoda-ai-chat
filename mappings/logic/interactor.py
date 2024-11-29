@@ -3,7 +3,7 @@ import logging
 
 from rest_framework.exceptions import APIException
 import common_utils
-from common_utils.config import API_URL
+from common_utils.config import API_URL, CYODA_APP_NAME
 from common_utils.utils import parse_json
 from config_generator.config_interactor import ConfigInteractor
 from .processor import MappingProcessor
@@ -33,9 +33,14 @@ class MappingsInteractor(ConfigInteractor):
         entity_response = common_utils.utils.send_get_request(token, API_URL,
                                                               f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
         entity_body = entity_response.json()['model']
-        questions = [
-            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(ds_input, entity_body),
-        ]
+        if CYODA_APP_NAME.lower() == 'cyoda':
+            questions = [
+                prompts.MAPPINGS_INITIAL_PROMPT_CYODA.format(ds_input, entity_body),
+            ]
+        else:
+            questions = [
+                prompts.MAPPINGS_INITIAL_PROMPT_COBI.format(ds_input, entity_body),
+            ]
         logger.info("Mapping init questions list: %s", questions)
         return self._initialize(chat_id, questions)
 
@@ -50,7 +55,7 @@ class MappingsInteractor(ConfigInteractor):
                 current_script = f"Current script: {json.dumps(script_body)}."
         logger.info("Current script: %s", user_script)
         return_string = prompts.RETURN_DATA.get(return_object, "")
-        ai_question = f"{question}. {current_script} {return_string}"
+        ai_question = f"{question}. {current_script} {return_string}. Always add line breaks to the code."
         logger.info("Asking question: %s", ai_question)
         if return_object == prompts.Keys.SOURCES.value:
             return self.handle_additional_sources(chat_id, question)
