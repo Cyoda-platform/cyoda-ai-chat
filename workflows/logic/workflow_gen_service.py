@@ -40,7 +40,9 @@ class WorkflowGenerationService:
         if workflow_file_path:
             workflow_id = self._create_workflow(token, data, workflow_file_path, class_name)
 
-        state_maps = self._retrieve_existing_states(token, workflow_id)
+        workflow_full_dto = self.retrieve_existing_workflow(token, workflow_id)
+
+        state_maps = self._create_mapping(workflow_full_dto, 'states')
         criteria_maps = self._retrieve_existing_criteria(token, class_name)
         process_maps = self._retrieve_existing_processes(token, class_name)
 
@@ -60,6 +62,22 @@ class WorkflowGenerationService:
                                      json.dumps(workflow_data))
         self._check_response(response, "POST")
         return response.json()['id']
+
+    def save_workflow(self, token, workflow_dto, workflow_id):
+        response = send_post_request(token, API_URL, "platform-api/statemachine/import?needRewrite=true",
+                                     json=workflow_dto)
+        self._check_response(response, "POST")
+        if response.content:
+            return response.json()
+        else:
+            return f"Workflow {workflow_id} was updated."
+
+    def retrieve_existing_workflow(self, token, workflow_id):
+        """Retrieve existing workflowDto"""
+        response = send_get_request(token, API_URL,
+                                    f"platform-api/statemachine/export?includeIds={workflow_id}")
+        self._check_response(response, "GET")
+        return response.json()
 
     def _retrieve_existing_states(self, token, workflow_id):
         """Retrieve and map existing states for a workflow."""

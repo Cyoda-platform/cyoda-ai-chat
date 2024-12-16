@@ -7,7 +7,7 @@ import httpx
 from common_utils.utils import (
     send_get_request,
     send_put_request,
-    validate_and_parse_json
+    validate_and_parse_json, read_json_file
 )
 from common_utils.config import (
     API_URL,
@@ -59,20 +59,31 @@ class WorkflowsInteractor(ConfigInteractor):
                 return {"success": True,
                         "message": f"Workflow id = {workflow_id}"}
 
+            # if return_object == prompts.Keys.GENERATE_WORKFLOW.value:
+            #     workflow_id = self._generate_workflow_from_text(chat_id, token, question, class_name)
+            #     return {"success": True,
+            #             "message": f"Workflow id = {workflow_id}"}
+
+            if return_object == prompts.Keys.GENERATE_TRANSITION.value:
+                workflow_id = json_data.get("workflow_id")
+                self._update_workflow_from_text(chat_id, token, question, class_name, workflow_id)
+                return {"success": True,
+                        "message": f"Workflow id = {workflow_id}"}
+
             if return_object == prompts.Keys.SOURCES.value:
                 self.handle_additional_sources(question)
                 return {"success": True,
                         "message": f"{question} added"}
 
-            if return_object == prompts.Keys.GENERATE_TRANSITION.value:
-                workflow_id = json_data.get("workflow_id")
-                if not workflow_id:
-                    return {"success": False, "message": "workflow_id is missing"}
-                workflow_id = self._generate_transitions_from_text(chat_id, token, question, class_name, workflow_id)
-                return {"success": True,
-                        "message": f"Workflow id = {workflow_id}"}
-            result = self.processor.ask_question(chat_id, question)
-            return {"success": True, "message": f"{result}"}
+            # if return_object == prompts.Keys.GENERATE_TRANSITION.value:
+            #     workflow_id = json_data.get("workflow_id")
+            #     if not workflow_id:
+            #         return {"success": False, "message": "workflow_id is missing"}
+            #     workflow_id = self._generate_transitions_from_text(chat_id, token, question, class_name, workflow_id)
+            #     return {"success": True,
+            #             "message": f"Workflow id = {workflow_id}"}
+            # result = self.processor.ask_question(chat_id, question)
+            # return {"success": True, "message": f"{result}"}
 
         except Exception as e:
             raise e
@@ -107,6 +118,18 @@ class WorkflowsInteractor(ConfigInteractor):
         data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
                                        MAX_RETRIES_GENERATE_WORKFLOW)
         return self.save_workflow_entity(token, data, class_name)
+
+    def _update_workflow_from_text(self, chat_id, token, question, class_name, workflow_id):
+        existing_workflow = self.workflow_generation_service.retrieve_existing_workflow(token, workflow_id)
+        workflow_schema = read_json_file(f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}")
+        #ai_question = f"{question}. The current workflow: {existing_workflow}. Apply all the requested changes to the current workflow. Return the updated JSON without adding comments or symbols."
+        ai_question = f"{question}. The current workflow: {existing_workflow}. Apply all the requested changes to the current workflow within the framework of workflow_schema json: {workflow_schema}. Return the updated JSON without adding comments or symbols."
+        data = self.processor.ask_question(chat_id, f"{ai_question}.")
+        data_json = json.loads(data.strip("```json").strip("```").strip())
+        # TODO enable validation. Throws "'name' is a required property". But validates on https://www.jsonschemavalidator.net/
+        #data_validated = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
+        #                                MAX_RETRIES_GENERATE_WORKFLOW)
+        return self.workflow_generation_service.save_workflow(token, data_json, workflow_id)
 
     def _generate_transitions_from_text(self, chat_id, token, question, class_name, workflow_id):
         workflow_transitions_raw = send_get_request(token, API_URL,
