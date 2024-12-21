@@ -7,7 +7,7 @@ import httpx
 from common_utils.utils import (
     send_get_request,
     send_put_request,
-    validate_and_parse_json
+    validate_and_parse_json, read_json_file
 )
 from common_utils.config import (
     API_URL,
@@ -71,6 +71,7 @@ class WorkflowsInteractor(ConfigInteractor):
                 workflow_id = self._generate_transitions_from_text(chat_id, token, question, class_name, workflow_id)
                 return {"success": True,
                         "message": f"Workflow id = {workflow_id}"}
+
             result = self.processor.ask_question(chat_id, question)
             return {"success": True, "message": f"{result}"}
 
@@ -103,10 +104,10 @@ class WorkflowsInteractor(ConfigInteractor):
         return self.save_workflow_entity(token, data, class_name)
 
     def _generate_workflow_from_text(self, chat_id, token, question, class_name):
-        data = self.processor.ask_question(chat_id, f"{question}. Class name is {class_name}")
-        data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
-                                       MAX_RETRIES_GENERATE_WORKFLOW)
-        return self.save_workflow_entity(token, data, class_name)
+        data_validated = validate_and_parse_json(self.processor, chat_id, question, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
+                                        MAX_RETRIES_GENERATE_WORKFLOW)
+        cyoda_dto_map = self.workflow_generation_service.parse_ai_to_cyoda_dto(data_validated, class_name)
+        return self.workflow_generation_service.save_workflow(token, cyoda_dto_map)
 
     def _generate_transitions_from_text(self, chat_id, token, question, class_name, workflow_id):
         workflow_transitions_raw = send_get_request(token, API_URL,
