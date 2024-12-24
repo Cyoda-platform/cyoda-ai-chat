@@ -19,7 +19,7 @@ def get_user_answer(response):
 
 def generate_uuid() -> uuid:
     return uuid.uuid1()
-    
+
 def parse_json(result: str) -> str:
     if result.startswith("```"):
         return "\n".join(result.split("\n")[1:-1])
@@ -41,12 +41,24 @@ def validate_result(parsed_result: str, file_path: str) -> bool:
 
     try:
         json_data = json.loads(parsed_result)
-        validate(instance=json_data, schema=schema)
+        validator = jsonschema.Draft7Validator(schema)
+        errors = sorted(validator.iter_errors(json_data), key=lambda e: e.path)
+
+        if errors:
+            error_messages = []
+            for error in errors:
+                error_messages.append(
+                    f"Message: {error.message}\n"
+                    f"Schema path: {'.'.join(map(str, error.schema_path))}\n"
+                    f"Instance path: {'.'.join(map(str, error.path))}"
+                )
+            full_error_message = "\n\n".join(error_messages)
+            logger.error(f"JSON validation failed:\n{full_error_message}")
+            raise jsonschema.exceptions.ValidationError(full_error_message)
+
         logger.info("JSON validation successful.")
         return True
-    except jsonschema.exceptions.ValidationError as err:
-        logger.error(f"JSON validation failed: {err.message}")
-        raise
+
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON: {e}")
         raise
@@ -172,7 +184,7 @@ def now():
 def timestamp_before(seconds: int) -> int:
     return int((time.time()-seconds)*1000.0)
 
-def validate_and_parse_json(
+def validate_and_parse_json_v1(
             processor,
             chat_id: str,
             data: str,
@@ -213,3 +225,50 @@ def validate_and_parse_json(
         logger.error("Maximum retry attempts reached. Validation failed.")
         raise ValueError("JSON validation failed after retries.")
 
+def validate_and_parse_json(
+        processor,
+        chat_id: str,
+        data: str,
+        schema_path: str,
+        max_retries: int,
+):
+    try:
+        parsed_data = parse_json(data)
+    except Exception as e:
+        logger.exception("An exception occurred")
+        logger.error(f"Failed to parse JSON: {e}")
+        raise ValueError("Invalid JSON data provided.") from e
+
+    attempt = 0
+    while attempt <= max_retries:
+        try:
+            validate_result(parsed_data, schema_path)
+            logger.info(f"JSON validation successful on attempt {attempt + 1}.")
+            attempt += 1
+            return json.loads(parsed_data)
+        except jsonschema.exceptions.ValidationError as e:
+            attempt += 1
+            logger.warning(
+                f"JSON validation failed on attempt {attempt + 1} with error: {e.message}"
+            )
+            try:
+                with open(schema_path, "r") as schema_file:
+                    schema = json.load(schema_file)
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                logger.error(f"Error reading schema file {schema_path}: {e}")
+                raise
+            if attempt < max_retries:
+                question = (
+                    f"Retry the last step. JSON validation failed with error: {e.message}. Correct this data: {parsed_data} "
+                    f"using this schema: {json.dumps(schema)}. "
+                    "Return only the DTO JSON."
+                )
+                retry_result = processor.ask_question(chat_id, question)
+                parsed_data = parse_json(retry_result)
+        except Exception as e:
+            logger.exception("An exception occurred")
+            logger.error("Maximum retry attempts reached. Validation failed.")
+        finally:
+            attempt += 1
+    logger.error("Maximum retry attempts reached. Validation failed.")
+    raise ValueError("JSON validation failed after retries.")

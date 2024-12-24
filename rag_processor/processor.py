@@ -3,6 +3,8 @@ import logging
 from abc import ABC
 from typing import List, Dict, Optional, Any
 
+import requests
+from langchain_core.tools import tool
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI
 from langchain_community.document_loaders import (
@@ -41,6 +43,13 @@ logger = logging.getLogger("django")
 
 store = {}
 
+@tool
+def get_web_page_contents(url: str) -> str:
+    """Takes web page url as an argument and returns web page contents"""
+    return "this is valid page text"
+
+
+
 class RagProcessor(ABC):
 
     def __init__(
@@ -57,7 +66,7 @@ class RagProcessor(ABC):
             chunk_size=SPLIT_CHUNK_SIZE, chunk_overlap=SPLIT_CHUNK_OVERLAP
         )
         logger.info("Initializing RagProcessor v1...")
-        self.llm = self.initialize_llm(temperature, max_tokens, model, openai_api_base)
+        self.llm = self.initialize_llm(temperature, max_tokens, model, openai_api_base).bind_functions([get_web_page_contents])
         self.vectorstore = self.init_vectorstore(path, config_docs)
         self.memory = self.init_memory()
         self.conversational_rag_chain = self.process_rag_chain(system_prompt)

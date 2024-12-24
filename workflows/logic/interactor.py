@@ -7,7 +7,7 @@ import httpx
 from common_utils.utils import (
     send_get_request,
     send_put_request,
-    validate_and_parse_json, read_json_file
+    validate_and_parse_json, read_json_file, validate_result
 )
 from common_utils.config import (
     API_URL,
@@ -24,6 +24,7 @@ from . import prompts
 logger = logging.getLogger('django')
 
 chat_id_prefix = "workflow"
+
 
 class WorkflowsInteractor(ConfigInteractor):
     def __init__(self, processor: WorkflowProcessor, workflow_generation_service: WorkflowGenerationService):
@@ -55,14 +56,24 @@ class WorkflowsInteractor(ConfigInteractor):
                         "message": f"Workflow id = {workflow_id}"}
 
             if return_object == prompts.Keys.GENERATE_WORKFLOW.value:
-                workflow_id = self._generate_workflow_from_text(chat_id, token, question, class_name)
+                result = self._generate_workflow_from_text(chat_id, token, question, class_name)
                 return {"success": True,
-                        "message": f"Workflow id = {workflow_id}"}
+                        "message": f"{result}"}
 
             if return_object == prompts.Keys.SOURCES.value:
                 self.handle_additional_sources(question)
                 return {"success": True,
                         "message": f"{question} added"}
+
+            if return_object == prompts.Keys.GENERATE_WORKFLOW.value:
+                result = self._generate_workflow_from_text(chat_id=chat_id, token=token, question=question, class_name=class_name)
+                return {"success": True,
+                        "message": result}
+
+            if return_object == prompts.Keys.SAVE_WORKFLOW.value:
+                workflow_id = self._save_workflow_from_json(class_name=class_name, token=token, workflow_json=question)
+                return {"success": True,
+                        "message": f"Workflow id = {workflow_id}"}
 
             if return_object == prompts.Keys.GENERATE_TRANSITION.value:
                 workflow_id = json_data.get("workflow_id")
@@ -103,10 +114,18 @@ class WorkflowsInteractor(ConfigInteractor):
                                        MAX_RETRIES_GENERATE_WORKFLOW)
         return self.save_workflow_entity(token, data, class_name)
 
+
     def _generate_workflow_from_text(self, chat_id, token, question, class_name):
-        data_validated = validate_and_parse_json(self.processor, chat_id, question, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
-                                        MAX_RETRIES_GENERATE_WORKFLOW)
-        cyoda_dto_map = self.workflow_generation_service.parse_ai_to_cyoda_dto(data_validated, class_name)
+        data = self.processor.ask_question(chat_id, f"{question}. Class name is {class_name}")
+        data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
+                                       MAX_RETRIES_GENERATE_WORKFLOW)
+        return data
+
+
+    def _save_workflow_from_json(self, token, workflow_json, class_name):
+        validate_result(workflow_json, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}")
+        input_json = json.loads(workflow_json)
+        cyoda_dto_map = self.workflow_generation_service.parse_ai_to_cyoda_dto(input_json=input_json, class_name=class_name)
         return self.workflow_generation_service.save_workflow(token, cyoda_dto_map)
 
     def _generate_transitions_from_text(self, chat_id, token, question, class_name, workflow_id):
