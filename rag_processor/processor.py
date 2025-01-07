@@ -29,7 +29,7 @@ from common_utils.config import (
     SPLIT_DOCS_LOAD_K,
     INIT_LLM,
     ENV,
-    WORK_DIR,
+    WORK_DIR, DEEPSEEK_API_KEY,
 )
 from .vector_store_factory import create_vector_store
 from .chat_memory_factory import get_session_history, init_chat_memory
@@ -70,6 +70,25 @@ class RagProcessor(ABC):
         self.vectorstore = self.init_vectorstore(path, config_docs)
         self.memory = self.init_memory()
         self.conversational_rag_chain = self.process_rag_chain(system_prompt)
+
+    # def initialize_llm(
+    #         self,
+    #         temperature: float,
+    #         max_tokens: int,
+    #         model: str,
+    #         openai_api_base: Optional[str],
+    # ) -> Optional[ChatOpenAI]:
+    #     """Initializes the language model with the OpenAI API key."""
+    #     if INIT_LLM == "true":
+    #         logger.info("INITIALIZING LLM")
+    #         return ChatOpenAI(
+    #             model='deepseek-chat',
+    #             openai_api_key=DEEPSEEK_API_KEY,
+    #             openai_api_base="https://api.deepseek.com/v1",
+    #             temperature=temperature,
+    #             max_tokens=max_tokens,
+    #         )
+    #     return None
 
     def initialize_llm(
         self,
