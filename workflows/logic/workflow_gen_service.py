@@ -275,10 +275,10 @@ class WorkflowGenerationService:
             "metaData": {"documentLink": ""}
         })
 
-        # Process workflow's externalized_criterias
+        # Process workflow's externalized_criteria
         workflow_criteria_ids = []
 
-        for criteria in input_json["workflow_criterias"]["externalized_criterias"]:
+        for criteria in input_json["workflow_criteria"]["externalized_criteria"]:
             criteria_id = self.generate_id()
             workflow_criteria_ids.append(criteria_id)
             criteria_params = self.generate_ext_criteria_params(criteria)
@@ -287,7 +287,7 @@ class WorkflowGenerationService:
             dto["criterias"].append(criteria_dto)
 
         # Process workflow's condition_criteria
-        for criteria in input_json["workflow_criterias"]["condition_criterias"]:
+        for criteria in input_json["workflow_criteria"]["condition_criteria"]:
             criteria_id = self.generate_id()
             workflow_criteria_ids.append(criteria_id)
             dto["criterias"].append({
@@ -318,7 +318,7 @@ class WorkflowGenerationService:
             criteria_ids = []
 
             # Process transition's externalized_criteria
-            for criteria in transition["transition_criterias"]["externalized_criterias"]:
+            for criteria in transition["transition_criteria"]["externalized_criteria"]:
                 criteria_id = self.generate_id()
                 criteria_ids.append(criteria_id)
                 criteria_params = self.generate_ext_criteria_params(criteria)
@@ -327,7 +327,7 @@ class WorkflowGenerationService:
                 dto["criterias"].append(criteria_dto)
 
             # Process transition's condition_criteria
-            for criteria in transition["transition_criterias"]["condition_criterias"]:
+            for criteria in transition["transition_criteria"]["condition_criteria"]:
                 criteria_id = self.generate_id()
                 criteria_ids.append(criteria_id)
                 dto["criterias"].append({
@@ -407,10 +407,10 @@ class WorkflowGenerationService:
 
                 dto["processParams"].extend(process_params)
 
-                # Process externalized_processor's externalized_criterias
+                # Process externalized_processor's externalized_criteria
                 process_criteria_ids = []
 
-                for criteria in process["processor_criterias"]["externalized_criterias"]:
+                for criteria in process["processor_criteria"]["externalized_criteria"]:
                     criteria_id = self.generate_id()
                     process_criteria_ids.append(criteria_id)
                     criteria_params = self.generate_ext_criteria_params(criteria)
@@ -419,7 +419,7 @@ class WorkflowGenerationService:
                     dto["criterias"].append(criteria_dto)
 
                 # Process externalized_processor's condition_criteria
-                for criteria in process["processor_criterias"]["condition_criterias"]:
+                for criteria in process["processor_criteria"]["condition_criteria"]:
                     criteria_id = self.generate_id()
                     process_criteria_ids.append(criteria_id)
                     dto["criterias"].append({
@@ -515,10 +515,10 @@ class WorkflowGenerationService:
 
                 dto["processParams"].extend(process_params)
 
-                # Process schedule_transition_processor's externalized_criterias
+                # Process schedule_transition_processor's externalized_criteria
                 process_criteria_ids = []
 
-                for criteria in process["processor_criterias"]["externalized_criterias"]:
+                for criteria in process["processor_criteria"]["externalized_criteria"]:
                     criteria_id = self.generate_id()
                     process_criteria_ids.append(criteria_id)
                     criteria_params = self.generate_ext_criteria_params(criteria)
@@ -527,7 +527,7 @@ class WorkflowGenerationService:
                     dto["criterias"].append(criteria_dto)
 
                 # Process schedule_transition_processor's condition_criteria
-                for criteria in process["processor_criterias"]["condition_criterias"]:
+                for criteria in process["processor_criteria"]["condition_criteria"]:
                     criteria_id = self.generate_id()
                     process_criteria_ids.append(criteria_id)
                     dto["criterias"].append({
