@@ -269,7 +269,7 @@ class WorkflowGenerationService:
             "transitionIds": [],
             "criteriaIds": [],
             "stateIds": ["noneState"],
-            "active": False,
+            "active": True,
             "useDecisionTree": False,
             "decisionTrees": [],
             "metaData": {"documentLink": ""}
@@ -646,6 +646,71 @@ class WorkflowGenerationService:
             dto["workflow"][0]["transitionIds"].append(transition_id)
 
         return dto
+
+    def load_enum_from_schema(self, schema_path, enum_ref):
+        """
+        Loads an enum array from a JSON schema file.
+        :param schema_path: Path to the JSON schema file.
+        :param enum_ref: JSON pointer to the enum definition within the schema.
+        :return: List of enum values or an empty list if not found.
+        """
+        try:
+            with open(schema_path, 'r') as schema_file:
+                schema = json.load(schema_file)
+                components = enum_ref.strip('#/').split('/')
+                enum_section = schema
+                for comp in components:
+                    enum_section = enum_section.get(comp, {})
+
+                if isinstance(enum_section, list):
+                    return enum_section
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error loading schema: {e}")
+
+        return []
+
+    def correct_meta_fields_conditions_in_workflow(self, workflow_data, schema_path):
+        """
+        If is_meta_field set to True, then field_name must belong to the list of meta fields enums from the schema.
+        The schema requirements for is_meta_field cannot be properly indicated and corrected by parse_and_validate.
+        :param workflow_data: The workflow data to be corrected.
+        :param schema_path: Path to the JSON schema file.
+        :return: The corrected workflow data.
+        """
+        enum_ref = "#/definitions/enums/meta_fields/enum"
+        # Define the allowed meta fields
+        meta_fields = self.load_enum_from_schema(schema_path, enum_ref)
+
+        def correct_condition(condition):
+            """Correct a single condition based on field_name."""
+            if "field_name" in condition:
+                if condition.get("is_meta_field", False):
+                    condition["is_meta_field"] = condition["field_name"] in meta_fields
+            if "conditions" in condition:
+                # Recursively process nested conditions
+                for sub_condition in condition["conditions"]:
+                    correct_condition(sub_condition)
+
+        def correct_condition_criteria(condition_criteria):
+            """Correct all conditions within condition_criteria."""
+            for criteria in condition_criteria:
+                if "condition" in criteria:
+                    correct_condition(criteria["condition"])
+
+        # Process the workflow criteria
+        correct_condition_criteria(workflow_data["workflow_criteria"]["condition_criteria"])
+
+        # Process transitions
+        for transition in workflow_data.get("transitions", []):
+            correct_condition_criteria(transition["transition_criteria"]["condition_criteria"])
+            # Process processors
+            for processor in transition["processes"].get("schedule_transition_processors", []):
+                correct_condition_criteria(processor["processor_criteria"]["condition_criteria"])
+            for processor in transition["processes"].get("externalized_processors", []):
+                correct_condition_criteria(processor["processor_criteria"]["condition_criteria"])
+
+        return workflow_data
+
 
     def retrieve_existing_workflow(self, token, workflow_id):
         """Retrieve existing workflowDto"""

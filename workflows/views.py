@@ -53,7 +53,7 @@ class ChatWorkflowView(views.APIView):
             answer = get_user_answer(response)
             interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
             ##todo need to improve here!
-            if (return_object in [prompts.Keys.GENERATE_WORKFLOW_FROM_URL.value, prompts.Keys.GENERATE_WORKFLOW_FROM_IMAGE.value, prompts.Keys.GENERATE_WORKFLOW.value]):
+            if return_object in [prompts.Keys.GENERATE_WORKFLOW_FROM_URL.value, prompts.Keys.SAVE_WORKFLOW.value]:
                 interactor.update_chat_id(token, chat_id, chat_id_prefix + answer.replace("Workflow id = ", ""))
             return Response(response)
         except Exception as e:
