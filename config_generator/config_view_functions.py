@@ -92,12 +92,14 @@ def chat(request, interactor: ConfigInteractor, chat_id_prefix):
                 {"success": False, "message": "request parameter is missing"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        user_file = request.FILES.get("file", None)
         response = interactor.chat(
             token=token,
             chat_id=chat_id,
             question=question,
             return_object=return_object,
-            user_data=""
+            user_data="",
+            user_file=user_file
         )
         logger.info(
             "Chat connection request processed for chat_id: %s", chat_id
