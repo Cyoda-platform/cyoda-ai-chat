@@ -27,6 +27,11 @@ class ChatView(views.APIView):
     def post(self, request, *args, **kwargs):
         return config_view_functions.chat(request, interactor, chat_id_prefix)
 
+class ChatFileView(views.APIView):
+
+    def post(self, request, *args, **kwargs):
+        return config_view_functions.chat(request, interactor, chat_id_prefix)
+
 
 class ChatClearView(views.APIView):
 

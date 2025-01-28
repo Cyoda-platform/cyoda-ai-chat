@@ -7,7 +7,7 @@ import httpx
 from common_utils.utils import (
     send_get_request,
     send_put_request,
-    validate_and_parse_json, read_json_file, validate_result
+    validate_and_parse_json, read_json_file, validate_result, parse_json
 )
 from common_utils.config import (
     API_URL,
@@ -51,9 +51,9 @@ class WorkflowsInteractor(ConfigInteractor):
                 image_file = json_data.get('file')
                 if image_file is None:
                     return {"success": False, "message": "image_file is missing"}
-                workflow_id = self._generate_workflow_from_image_file(chat_id, token, question, class_name, image_file)
+                result = self._generate_workflow_from_image_file(chat_id, token, question, class_name, image_file)
                 return {"success": True,
-                        "message": f"Workflow id = {workflow_id}"}
+                        "message": f"{result}"}
 
             if return_object == prompts.Keys.GENERATE_WORKFLOW.value:
                 result = self._generate_workflow_from_text(chat_id, token, question, class_name)
@@ -64,11 +64,6 @@ class WorkflowsInteractor(ConfigInteractor):
                 self.handle_additional_sources(question)
                 return {"success": True,
                         "message": f"{question} added"}
-
-            if return_object == prompts.Keys.GENERATE_WORKFLOW.value:
-                result = self._generate_workflow_from_text(chat_id=chat_id, token=token, question=question, class_name=class_name)
-                return {"success": True,
-                        "message": result}
 
             if return_object == prompts.Keys.SAVE_WORKFLOW.value:
                 workflow_id = self._save_workflow_from_json(class_name=class_name, token=token, workflow_json=question)
@@ -107,7 +102,7 @@ class WorkflowsInteractor(ConfigInteractor):
                                        MAX_RETRIES_GENERATE_WORKFLOW)
         return self.save_workflow_entity(token, data, class_name)
 
-    def _generate_workflow_from_image_file(self, chat_id, token, question, class_name, image_file):
+    def _generate_workflow_from_image_file_v1(self, chat_id, token, question, class_name, image_file):
         encoded_image_data = base64.b64encode(image_file.read()).decode('utf-8')
         data = self.processor.ask_question_with_image(chat_id, question, encoded_image_data)
         data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
@@ -115,12 +110,29 @@ class WorkflowsInteractor(ConfigInteractor):
         return self.save_workflow_entity(token, data, class_name)
 
 
-    def _generate_workflow_from_text(self, chat_id, token, question, class_name):
+    def _generate_workflow_from_text_v1(self, chat_id, token, question, class_name):
         data = self.processor.ask_question(chat_id, f"{question}. Class name is {class_name}")
         data = validate_and_parse_json(self.processor, chat_id, data, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}",
                                        MAX_RETRIES_GENERATE_WORKFLOW)
         return data
 
+    def _generate_workflow_from_image_file(self, chat_id, token, question, class_name, image_file):
+        encoded_image_data = base64.b64encode(image_file.read()).decode('utf-8')
+        data = self.processor.ask_question_with_image(chat_id, question, encoded_image_data)
+        return self._parse_and_validate_workflow(chat_id, data)
+
+    def _generate_workflow_from_text(self, chat_id, token, question, class_name):
+        data = self.processor.ask_question(chat_id, f"{question}. Use Instruction how to generate workflow version 6a5b781e-0f75-4239-9a3c-50c3d3a48047. Return only the final workflow JSON without adding any comments.")
+        return self._parse_and_validate_workflow(chat_id, data)
+
+    def _parse_and_validate_workflow(self, chat_id, data):
+        schema_path = f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}"
+        data = parse_json(data)
+        data = self.workflow_generation_service.correct_meta_fields_conditions_in_workflow(json.loads(data),
+                                                                                           schema_path)
+        data = validate_and_parse_json(self.processor, chat_id, json.dumps(data), schema_path,
+                                       MAX_RETRIES_GENERATE_WORKFLOW)
+        return json.dumps(data)
 
     def _save_workflow_from_json(self, token, workflow_json, class_name):
         validate_result(workflow_json, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}")
