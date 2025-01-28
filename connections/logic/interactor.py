@@ -4,6 +4,8 @@ import uuid
 from typing import List, Dict
 from django.core.exceptions import BadRequest
 from rest_framework.exceptions import APIException
+
+from config_generator.config_interactor import ConfigInteractor
 from . import prompts
 from .processor import ConnectionProcessor
 from common_utils.config import (
@@ -25,31 +27,18 @@ from common_utils.utils import (
     validate_and_parse_json
 )
 
-# Logger setup
 logger = logging.getLogger("django")
-initialized_requests = set()
 
+chat_id_prefix = "connections"
 
-class ConnectionsInteractor:
+class ConnectionsInteractor(ConfigInteractor):
     def __init__(self, processor: ConnectionProcessor):
+        super().__init__(processor)
         logger.info("Initializing ConnectionsInteractor...")
         self.processor = processor
 
-    def clear_context(self, chat_id):
-        # Validate input
-        try:
-            # Clear chat history
-            self.processor.chat_history.clear_chat_history(chat_id)
-            if chat_id in initialized_requests:
-                initialized_requests.remove(chat_id)
-                return {"message": f"Chat context with id {chat_id} cleared."}
-        except Exception as e:
-            logger.error(
-                "An error occurred while clearing the context: %s", e, exc_info=True
-            )
-            raise APIException("An error occurred while clearing the context.", e)
-
-    def chat(self, token: str, chat_id: str, return_object: str, question: str) -> dict:
+    def chat(self, token: str, chat_id: str, return_object: str, question: str, user_data: str) -> dict:
+        super().chat(token, chat_id, question, return_object, user_data)
         try:
             self.validate_chat_input(chat_id, return_object, question)
         except ValueError as e:
@@ -72,13 +61,13 @@ class ConnectionsInteractor:
             if handler:
                 # Check if the handler requires the token parameter
                 if return_object == prompts.Keys.IMPORT_CONNECTION.value:
-                    return handler(token=token, chat_id=chat_id, question=question)
+                    return {"success": True, "message": handler(token=token, chat_id=chat_id, question=question)}
                 else:
-                    return handler(chat_id, question)
+                    return {"success": True, "message": handler(chat_id, question)}
             else:
                 # Default action if no handler is found
                 result = self.processor.ask_question(chat_id, question)
-                return {"answer": result}
+                return {"success": True, "message": result}
 
         except Exception as e:
             self.log_and_raise_error("An error occurred while processing the chat", e)
@@ -163,7 +152,8 @@ class ConnectionsInteractor:
     def generate_dto(self, chat_id: str, prompt: str, schema_path: str):
         try:
             result = self.processor.ask_question(chat_id, prompt)
-            return validate_and_parse_json(self.processor, chat_id, result, f"{WORK_DIR}/{schema_path}", MAX_RETRIES_ADD_CONNECTION)
+            return validate_and_parse_json(self.processor, chat_id, result, f"{WORK_DIR}/{schema_path}",
+                                           MAX_RETRIES_ADD_CONNECTION)
         except Exception as e:
             logger.error(f"Error generating DTO for schema {schema_path}: %s", e)
             raise
@@ -180,10 +170,25 @@ class ConnectionsInteractor:
         try:
             endpoint_prompt = prompt.replace("{endpoints}", str(endpoints_list))
             endpoint_configs.extend(self.generate_dto(chat_id, endpoint_prompt, ENDPOINT_JSON_SCHEMA_PATH))
+            for endpoint_config in endpoint_configs:
+                self._process_endpoint_config(endpoint_config)
             endpoint_configs = [config for config in endpoint_configs if config["method"] in ["POST_BODY", "GET"]]
         except Exception as e:
             logger.error("Error generating endpoint DTO: %s", e)
         return endpoint_configs
+
+    @staticmethod
+    def _process_endpoint_config(endpoint_config):
+        try:
+            parameters = endpoint_config.get('parameters', [])
+            for parameter in parameters:
+            # Set 'defaultValue' to None if it's empty or missing
+                if not parameter.get('defaultValue'):
+                    parameter['defaultValue'] = None
+        except KeyError as e:
+            print(f"Missing key in endpoint configuration: {e}")
+        except Exception as e:
+            print(f"An error occurred while processing endpoint config: {e}")
 
     def generate_parameter_dto(self, chat_id: str, prompt: str):
         try:
@@ -200,7 +205,8 @@ class ConnectionsInteractor:
             for parameter in parameters_list:
                 try:
                     parameters_configs.append(validate_and_parse_json(self.processor, chat_id, json.dumps(parameter),
-                                                                           f"{WORK_DIR}/{PARAMETER_JSON_SCHEMA_PATH}", MAX_RETRIES_ADD_CONNECTION))
+                                                                      f"{WORK_DIR}/{PARAMETER_JSON_SCHEMA_PATH}",
+                                                                      MAX_RETRIES_ADD_CONNECTION))
                 except Exception as e:
                     logger.error("Error generating endpoint DTO: %s", e)
             return parameters_configs
@@ -234,3 +240,4 @@ class ConnectionsInteractor:
         except Exception as e:
             logger.error("Error saving data: %s", e)
             raise
+

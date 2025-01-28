@@ -1,116 +1,148 @@
+import json
 import logging
+
 from rest_framework.response import Response
 from rest_framework import status, views
 
+from common_utils.utils import get_user_answer
 from .logic.processor import MappingProcessor
 from .logic.prompts import RETURN_DATA
-from .logic.dto import InitialMappingRequestDTO, ChatMappingRequestDTO
-from .logic.serializers import InitialMappingSerializer, ChatMappingSerializer
-from .logic.interactor import MappingsInteractor
+from .logic.interactor import MappingsInteractor, chat_id_prefix
+from config_generator import config_view_functions
 
 logger = logging.getLogger('django')
 interactor = MappingsInteractor(MappingProcessor())
 
-# Views
+
 class InitialMappingView(views.APIView):
-    """View to handle initial mapping requests."""
 
     def post(self, request, *args, **kwargs):
-        """Handle POST requests to initialize a mapping."""
+
         logger.info("Starting mapping initialization:")
-        serializer = InitialMappingSerializer(data=request.data)
-        if serializer.is_valid():
-            initial_mapping_request = InitialMappingRequestDTO(
-                id=serializer.validated_data.get("id", ""),
-                entity=serializer.validated_data.get("entity", ""),
-                input=serializer.validated_data.get("input", ""),
-            )
-            try:
-                response = interactor.initialize_mapping(
-                    chat_id=initial_mapping_request.id,
-                    ds_input=initial_mapping_request.input,
-                    entity=initial_mapping_request.entity,
-                )
-
-                logger.info(
-                    "Initial mapping request processed for chat_id: %s",
-                    initial_mapping_request.id,
-                )
-                return Response(response, status=status.HTTP_200_OK)
-            except Exception as e:
-                logger.error("Error processing initial mapping request: %s", e)
-                return Response(
-                    {"error": "Failed to process initial mapping request"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-        else:
-            logger.warning(
-                "Invalid data for initial mapping request: %s", serializer.errors
-            )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ChatMappingView(views.APIView):
-    """View to handle chat mapping requests."""
-
-    def post(self, request, *args, **kwargs):
-        """Handle POST requests to process a chat mapping."""
-        serializer = ChatMappingSerializer(data=request.data)
-        if serializer.is_valid():
-            chat_mapping_request = ChatMappingRequestDTO(
-                id=serializer.validated_data.get("id", ""),
-                question=serializer.validated_data.get("question", ""),
-                user_script=serializer.validated_data.get("user_script", ""),
-                return_object=serializer.validated_data.get("return_object", ""),
-            )
-            try:
-                response = interactor.chat(
-                    chat_mapping_request.id,
-                    chat_mapping_request.user_script,
-                    chat_mapping_request.return_object,
-                    chat_mapping_request.question,
-                )
-                logger.info(
-                    "Chat mapping request processed for chat_id: %s",
-                    chat_mapping_request.id,
-                )
-                return Response(response, status=status.HTTP_200_OK)
-            except Exception as e:
-                logger.error("Error processing chat mapping request: %s", e)
-                return Response(
-                    {"error": "Failed to process chat mapping request"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-        else:
-            logger.warning(
-                "Invalid data for chat mapping request: %s", serializer.errors
-            )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ChatMappingClearView(views.APIView):
-    """View to handle chat mapping clear requests."""
-
-    def get(self, request):
-        """Handle GET requests to clear a chat mapping."""
-        chat_id = request.query_params.get("id", "")
-        try:
-            interactor.clear_context(chat_id)
-            logger.info("Context cleared for chat_id: %s", chat_id)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            logger.error("Error clearing context: %s", e)
+        token = request.headers.get("Authorization")
+        if not token:
             return Response(
-                {"error": "Failed to clear context"},
+                {"success": False, "message": "Authorization header is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        chat_id = chat_id_prefix + request.data.get("chat_id")
+        if not chat_id:
+            return Response(
+                {"success": False, "message": "chat_id is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ds_input = request.data.get("ds_input")
+        entity_name = request.data.get("entity_name")
+        if not (ds_input or entity_name):
+            return Response(
+                {"success": False, "message": "ds_input or entity_name is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            response = interactor.initialize_mapping(
+                token,
+                chat_id,
+                ds_input,
+                entity_name,
+            )
+            # response = interactor.initialize_chat(token, chat_id, "None")
+
+            logger.info(
+                "Initial mapping request processed for chat_id: %s",
+                chat_id,
+            )
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error("Error processing initial mapping request: %s", e)
+            logger.exception("An exception occurred")
+            return Response(
+                {"success": False, "message": f"Failed to process initial mapping request: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
-class ReturnDataView(views.APIView):
-    """View to handle requests to return data."""
+class ChatMappingInitializedView(views.APIView):
 
     def get(self, request):
-        """Handle GET requests to return data."""
-        return_data = RETURN_DATA
-        logger.info("Returning data")
-        return Response(return_data, status=status.HTTP_200_OK)
+        return config_view_functions.is_initialized(request, interactor, chat_id_prefix)
+
+
+class ChatMappingView(views.APIView):
+
+    def post(self, request, *args, **kwargs):
+        try:
+            token = request.headers.get("Authorization")
+            if not token:
+                return Response(
+                    {"success": False, "message": "Authorization header is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            chat_id = chat_id_prefix + request.data.get("chat_id")
+            if not chat_id:
+                return Response(
+                    {"success": False, "message": "chat_id is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            question = request.data.get("question")
+            user_script = request.data.get("user_script")
+            return_object = request.data.get("return_object")
+            if not (question or user_script or return_object):
+                return Response(
+                    {"success": False, "message": "question or user_script or return_object is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            response = interactor.chat(
+                token=token,
+                chat_id=chat_id,
+                return_object=return_object,
+                question=question,
+                user_script=user_script
+            )
+            logger.info(
+                "Chat mapping request processed for chat_id: %s",
+                chat_id,
+            )
+            answer = get_user_answer(response)
+            interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error("Error processing chat mapping request: %s", e)
+            logger.exception("An exception occurred")
+            return Response(
+                {"success": False, "message": f"Failed to initialize connection: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ChatMappingClearView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.chat_clear(request, interactor, chat_id_prefix)
+
+
+class ReturnDataView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.return_data(RETURN_DATA)
+
+
+class ChatMappingUpdateIdView(views.APIView):
+    def put(self, request, *args, **kwargs):
+        return config_view_functions.update_id(request, interactor, chat_id_prefix)
+
+
+class ChatMappingGetChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_history(request, interactor, chat_id_prefix)
+
+class ChatSaveChatView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.write_back_chat_cache(request, interactor, chat_id_prefix)
+
+class ChatMappingGetUserChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_user_chat_history(request, interactor, chat_id_prefix)
+

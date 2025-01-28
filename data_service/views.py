@@ -1,95 +1,97 @@
 import logging
+
 from rest_framework.response import Response
 from rest_framework import status, views
-from .logic.interactor import TrinoInteractor
+
+from common_utils.utils import get_user_answer
+from .logic.interactor import TrinoInteractor, chat_id_prefix
 from .logic.prompts import RETURN_DATA
 from .logic.processor import TrinoProcessor
+from config_generator import config_view_functions
 
 logger = logging.getLogger("django")
 interactor = TrinoInteractor(TrinoProcessor())
 
 
-# Views
 class InitialTrinoView(views.APIView):
-    """View to handle initial trino requests."""
 
-    def get(self, request):
-        """Handle POST requests to initialize a trino."""
+    def post(self, request):
         try:
             logger.info("Starting InitialTrinoView")
-            chat_id = request.query_params.get("chat_id")
+            token = request.headers.get("Authorization")
+            if not token:
+                return Response(
+                    {"success": False, "message": "Authorization header is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            chat_id = chat_id_prefix + request.data.get("chat_id")
             if not chat_id:
                 return Response(
-                    {"error": "chat_id is missing"},
+                    {"success": False, "message": "chat_id is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            schema_name = request.query_params.get("schema_name")
+            schema_name = request.data.get("schema_name")
             if not schema_name:
                 return Response(
-                    {"error": "schema_name is missing"},
+                    {"success": False, "message": "schema_name is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.initialize(chat_id, schema_name)
+            response = interactor.initialize_chat(token, chat_id, schema_name)
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error initializing trino: %s", e)
             return Response(
-                {"error": "Failed to initialize trino"},
+                {"success": False, "message": f"Failed to initialize connection: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
+class ChatTrinoInitializedView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.is_initialized(request, interactor, chat_id_prefix)
+
+
 class ChatTrinoView(views.APIView):
-    """View to handle chat mapping requests."""
 
     def post(self, request, *args, **kwargs):
         """Handle POST requests to process a chat trino."""
         logger.info("Starting ChatTrinoView")
         try:
-            chat_id = request.query_params.get("chat_id")
-            if not chat_id:
+            token = request.headers.get("Authorization")
+            if not token:
                 return Response(
-                    {"error": "chat_id is missing"},
+                    {"success": False, "message": "Authorization header is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.chat(chat_id, request.data)
+            chat_id = chat_id_prefix + request.data.get("chat_id")
+            if not chat_id:
+                return Response(
+                    {"success": False, "message": "chat_id is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            question = request.data.get("question")
+            response = interactor.chat(token, chat_id, question, "None", "None")
+            answer = get_user_answer(response)
+            interactor.add_user_chat_hitory(token, chat_id, question, answer, "chat")
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error processing trino chat: %s", e)
             return Response(
-                {"error": "Failed to process trino chat request"},
+                {"success": False, "message": f"Error processing chat workflow: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
 class ChatTrinoClearView(views.APIView):
-    """View to handle chat trino clear requests."""
 
     def get(self, request):
-        """Handle GET requests to clear a chat trino."""
-        logger.info("Starting ChatTrinoClearView")
-        try:
-            chat_id = request.query_params.get("chat_id")
-            if not chat_id:
-                return Response(
-                    {"error": "chat_id is missing"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            response = interactor.clear_context(chat_id)
-            return Response(response, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error("Error clearing trino chat: %s", e)
-            return Response(
-                {"error": "Failed to clean trino chat"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        return config_view_functions.chat_clear(request, interactor, chat_id_prefix)
 
-
+#todo add to internal chat history
 class ChatTrinoRunQueryView(views.APIView):
-    """View to handle chat mapping requests."""
 
     def post(self, request, *args, **kwargs):
-        """Handle POST requests to process a chat trino."""
         logger.info("Starting ChatTrinoView")
         try:
             response = interactor.run_query(request.data["query"])
@@ -97,20 +99,33 @@ class ChatTrinoRunQueryView(views.APIView):
         except Exception as e:
             logger.error("Error processing trino chat: %s", e)
             return Response(
-                {"error": "Failed to process trino chat request"},
+                {"success": False, "message": f"Error processing chat workflow: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-            
-            
+
+
 class ReturnDataView(views.APIView):
-    """
-    View to handle requests to return data.
-    """
 
     def get(self, request):
-        """
-        Handle GET requests to return data.
-        """
-        return_data = RETURN_DATA
-        logger.info("Returning data")
-        return Response(return_data, status=status.HTTP_200_OK)
+        return config_view_functions.return_data(RETURN_DATA)
+
+
+class ChatTrinoUpdateIdView(views.APIView):
+    def put(self, request, *args, **kwargs):
+        return config_view_functions.update_id(request, interactor, chat_id_prefix)
+
+
+class ChatTrinoGetChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_history(request, interactor, chat_id_prefix)
+
+class ChatSaveChatView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.write_back_chat_cache(request, interactor, chat_id_prefix)
+
+class ChatTrinoGetUserChatHistoryView(views.APIView):
+
+    def get(self, request):
+        return config_view_functions.get_user_chat_history(request, interactor, chat_id_prefix)

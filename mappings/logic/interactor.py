@@ -1,98 +1,83 @@
 import json
 import logging
+
 from rest_framework.exceptions import APIException
+import common_utils
+from common_utils.config import API_URL, CYODA_APP_NAME
 from common_utils.utils import parse_json
+from config_generator.config_interactor import ConfigInteractor
 from .processor import MappingProcessor
 from . import prompts
 
 logger = logging.getLogger('django')
+chat_id_prefix = "mappings"
 
-# Sets to keep track of initialized script and columns, not thread-safe - will be replaced later
-initialized_mappings = set()
-mappings_cache = {}
-
-class MappingsInteractor:
+class MappingsInteractor(ConfigInteractor):
     """
     A class that interacts with mappings for a chat system.
     """
 
     def __init__(self, processor: MappingProcessor):
-        """
-        Initializes the MappingsInteractor instance.
-        """
+
+        super().__init__(processor)
         logger.info("Initializing MappingsInteractor...")
         self.processor = processor
 
-    def initialize_mapping(self, chat_id, ds_input, entity):
-        """
-        Initializes a mapping for the given chat ID, data source input, and entity.
+    def initialize_mapping(self, token, chat_id, ds_input, entity_name):
 
-        :param chat_id: The ID of the chat session.
-        :param ds_input: The data source input.
-        :param entity: The entity to initialize the mapping for.
-        :return: A Response indicating the result of the initialization.
-        """
         logger.info(
-            "Mapping parameters: Entity=%s, Data source input=%s", entity, ds_input
+            "Mapping parameters: Entity=%s, Data source input=%s", entity_name, ds_input
         )
-        
-        mappings_cache[chat_id] = ds_input
-        questions = [
-            prompts.MAPPINGS_INITIAL_PROMPT_SCRIPT.format(entity, entity, ds_input),
-        ]
-
+        super().initialize_chat(token, chat_id, str(ds_input))
+        model_name, model_version = entity_name.split(".")
+        entity_response = common_utils.utils.send_get_request(token, API_URL,
+                                                              f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
+        entity_body = entity_response.json()['model']
+        if CYODA_APP_NAME.lower() == 'cyoda':
+            logger.info("Working with cyoda model")
+            questions = [
+                prompts.MAPPINGS_INITIAL_PROMPT_CYODA.format(ds_input, entity_body),
+            ]
+        else:
+            questions = [
+                prompts.MAPPINGS_INITIAL_PROMPT_COBI.format(ds_input, entity_body),
+            ]
         logger.info("Mapping init questions list: %s", questions)
-        return self._initialize(chat_id, initialized_mappings, questions)
+        return self._initialize(chat_id, questions)
 
-    def chat(self, chat_id, user_script, return_object, question):
-        current_script = (
-            f"Current script: {user_script}."
-            if user_script and return_object != prompts.Keys.AUTOCOMPLETE.value
-            else ""
-        )
+    def chat(self, token, chat_id, return_object, question, user_script):
+        super().chat(token, chat_id, question, return_object, user_script)
+        current_script = ""
+        if user_script is None or return_object == prompts.Keys.AUTOCOMPLETE.value:
+            current_script = ""
+        else:
+            script_body = json.loads(user_script).get("script", {}).get("body")
+            if script_body is not None:
+                current_script = f"Current script: {json.dumps(script_body)}."
         logger.info("Current script: %s", user_script)
         return_string = prompts.RETURN_DATA.get(return_object, "")
-        ai_question = f"{question}. {current_script} {return_string}"
+        ai_question = f"{question}. {current_script} {return_string}. Always add line breaks to the code, so that it is well formatted."
         logger.info("Asking question: %s", ai_question)
+        if return_object == prompts.Keys.SOURCES.value:
+            return self.handle_additional_sources(chat_id, question)
         if return_object == prompts.Keys.TRANSFORMERS.value:
             return self._process_transformers(question)
         result = self.processor.ask_question(chat_id, ai_question)
-        return self._process_return_object(chat_id, return_object, result)
+        response = self._process_return_object(chat_id, return_object, result)
+        return {"success": True, "message": response}
 
-    def clear_context(self, chat_id):
-        """
-        Clears the context for the given chat ID.
-
-        :param chat_id: The ID of the chat session.
-        :return: A Response indicating the result of the context clearing.
-        """
-        self.processor.chat_history.clear_chat_history(chat_id)
-        items_to_remove = [initialized_mappings]
-        for item in items_to_remove:
-            self._remove_from_set(chat_id, item)
-        return {"message": f"Chat mapping with id {chat_id} cleared."}
-
-    def _initialize(self, chat_id, initialized_set, questions):
-        """
-        A private method that initializes a resource for the given chat ID.
-
-        :param chat_id: The ID of the chat session.
-        :param initialized_set: The set to track the initialized resources.
-        :param question: The prompt to ask the question.
-        :return: A Response indicating the result of the initialization.
-        """
-        if chat_id not in initialized_set:
-            try:
-                for question in questions:
-                    result = self.processor.ask_question(chat_id, question)
-                    logger.info(result)
-                initialized_set.add(chat_id)
-                return {"answer": f"{chat_id} initialization complete"}
-            except Exception as e:
-                logger.error(
-                    "An error occurred during initialization: %s", e, exc_info=True
-                )
-                return {"error": str(e)}
+    def _initialize(self, chat_id, questions):
+        try:
+            for question in questions:
+                result = self.processor.ask_question(chat_id, question)
+                logger.info(result)
+            return {"success": True, "message": {"chat_id": chat_id, "result": result}}
+        except Exception as e:
+            logger.error(
+                "An error occurred during initialization: %s", e, exc_info=True
+            )
+            logger.exception("An exception occurred")
+            return {"error": str(e)}
 
     def _process_return_object(self, chat_id, return_object, result):
         if return_object in [
@@ -100,7 +85,7 @@ class MappingsInteractor:
             prompts.Keys.CODE.value,
             prompts.Keys.AUTOCOMPLETE.value,
         ]:
-            response_data = {"answer": result}
+            response_data = result
         elif return_object == prompts.Keys.SCRIPT.value:
             response_data = self._process_script_return(chat_id, result)
         elif return_object == prompts.Keys.TRANSFORMERS.value:
@@ -181,6 +166,10 @@ class MappingsInteractor:
         """
         if chat_id in initialized_set:
             initialized_set.remove(chat_id)
+
+    def handle_additional_sources(self, chat_id, question):
+        urls = question.split(", ")
+        return self.processor.load_additional_rag_sources(urls)
 
     def _extract_date_info(self, question):
         data = json.loads(question)

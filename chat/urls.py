@@ -41,6 +41,8 @@ urlpatterns = [
     path("api/v1/mappings/", include("mappings.urls")),
     path("api/v1/workflows/", include("workflows.urls")),
     path("api/v1/trino/", include("data_service.urls")),
+    path("api/v1/cyoda/", include("cyoda.urls")),
+    path("api/v1/random/", include("random_chat.urls")),
     path("api/v1/prompts/", include("prompts_lib.urls")),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),

@@ -1,12 +1,8 @@
 
-import sys
 import json
 import logging
-from typing import List, Dict
-import uuid
 import jsonschema
-from common_utils.utils import get_env_var
-from common_utils.utils import get_env_var, send_get_request, send_post_request, send_put_request
+from common_utils.utils import get_env_var, send_get_request, send_post_request
 from workflows.logic.processor import WorkflowProcessor
 from common_utils.utils import parse_json, read_json_file, validate_result
 
@@ -32,7 +28,7 @@ class EntityTools:
         
     
     def get_entity_by_id(self):
-        """Function to get an entity."""
+        """Function to get an entity"""
         pass
 
     def get_current_state(self):

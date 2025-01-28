@@ -1,13 +1,11 @@
 import logging
-from typing import List, Dict
 from connections.logic.interactor import ConnectionsInteractor
 from connections.logic.ingestion_service import DataIngestionService
-from common_utils.utils import get_env_var
 from .entity_tools import token_store
 from workflows.logic.processor import WorkflowProcessor
-
+##todo
 logger = logging.getLogger("django")
-connectionsInteractor = ConnectionsInteractor()
+#connectionsInteractor = ConnectionsInteractor()
 rag_processor = WorkflowProcessor()
 ingestion_service = DataIngestionService()
 
@@ -21,9 +19,10 @@ class DataIngestionTools:
         logger.info(entity)
         chat_id = entity["chat_id"]
         question = entity[config_prompt_key]
-        response = connectionsInteractor.handle_import_connection(
-            token_store[chat_id], chat_id, question
-        )
+        #response = connectionsInteractor.handle_import_connection(
+        #    token_store[chat_id], chat_id, question
+        #)
+        response = None
         if response['success']:
             datasource_id = response["datasource_id"]
             operation_ai_result = rag_processor.ask_question(
