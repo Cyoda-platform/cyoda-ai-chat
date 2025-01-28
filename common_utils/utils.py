@@ -29,7 +29,6 @@ from odf.table import Table, TableRow, TableCell
 from odf import teletype
 
 from nltk import download as nltk_download
-from onnxruntime.transformers.shape_infer_helper import file_path
 from pptx import Presentation
 
 logger = logging.getLogger('django')
