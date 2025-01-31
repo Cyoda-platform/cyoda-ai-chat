@@ -210,3 +210,9 @@ class WorkflowsInteractor(ConfigInteractor):
     def handle_additional_sources(self, question):
         urls = question.split(", ")
         return self.processor.load_additional_sources(urls)
+
+    def return_workflow_dto_from_valid_json(self, workflow_json, class_name):
+        validate_result(workflow_json, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}")
+        input_json = json.loads(workflow_json)
+        cyoda_dto_map = self.workflow_generation_service.parse_ai_to_cyoda_dto(input_json=input_json, class_name=class_name)
+        return json.dumps(cyoda_dto_map, separators=(',', ':'))

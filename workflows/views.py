@@ -118,3 +118,28 @@ class GenerateWorkflowConfigView(views.APIView):
             )
         response_data = interactor.save_workflow_entity(token, request.data, class_name)
         return Response(response_data)
+
+class ReturnWorkflowDto(views.APIView):
+
+    def post(self, request, *args, **kwargs):
+        logger.info("Starting ReturnWorkflowDto")
+        token = request.headers.get("Authorization")
+        if not token:
+            return Response(
+                {"success": False, "message": "Authorization header is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        class_name = request.data.get("class_name")
+        if not class_name:
+            return Response(
+                {"success": False, "message": "class_name is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        workflow_json = request.data.get("workflow_json")
+        if not workflow_json:
+            return Response(
+                {"success": False, "message": "workflow_json is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        response_data = interactor.return_workflow_dto_from_valid_json(workflow_json, class_name)
+        return Response(response_data)
