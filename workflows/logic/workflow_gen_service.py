@@ -596,6 +596,7 @@ class WorkflowGenerationService:
                         "creationDate": self.current_timestamp(),
                         "description": transition["start_state_description"]
                     })
+            # Add "None" state
             else:
                 new_states.append({
                     "persisted": True,
@@ -645,7 +646,53 @@ class WorkflowGenerationService:
 
             dto["workflow"][0]["transitionIds"].append(transition_id)
 
+        self.add_none_state_if_not_exists(dto, class_name)
         return dto
+
+    def add_none_state_if_not_exists(self, dto, class_name):
+        # State "None" is mandatory for the workflow. It is added, if missing in the DTO.
+        none_state_exists = any(state["name"] == "None" for state in dto["states"])
+
+        if not none_state_exists:
+            none_state = {
+                "persisted": True,
+                "owner": "CYODA",
+                "id": "noneState",
+                "name": "None",
+                "entityClassName": class_name,
+                "creationDate": self.current_timestamp(),
+                "description": "Initial state of the workflow."
+            }
+            dto["states"].append(none_state)
+
+            # Find the current first state
+            end_state_ids = {transition["endStateId"] for transition in dto["transitions"]}
+            first_state_id = None
+            for transition in dto["transitions"]:
+                if transition["startStateId"] not in end_state_ids:
+                    first_state_id = transition["startStateId"]
+                    break
+            if first_state_id:
+                # Add new transition connecting noneState with current first state
+                new_transition = {
+                    "persisted": True,
+                    "owner": "CYODA",
+                    "id": self.generate_id(),
+                    "name": "initial_transition",
+                    "entityClassName": class_name,
+                    "creationDate": self.current_timestamp(),
+                    "description": "Initial transition from None state.",
+                    "startStateId": "noneState",
+                    "endStateId": first_state_id,
+                    "workflowId": dto["workflow"][0]["id"],
+                    "criteriaIds": [],
+                    "endProcessesIds": [],
+                    "active": True,
+                    "automated": True,
+                    "logActivity": False
+                }
+                dto["transitions"].append(new_transition)
+                dto["workflow"][0]["transitionIds"].append(new_transition["id"])
 
     def load_enum_from_schema(self, schema_path, enum_ref):
         """
