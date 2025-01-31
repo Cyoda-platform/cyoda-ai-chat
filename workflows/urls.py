@@ -12,4 +12,5 @@ urlpatterns = [
     path('update-id', views.ChatWorkflowUpdateIdView.as_view(), name='update-id'),
     path('save-chat', views.ChatSaveChatView.as_view(), name='save-chat'),
     path('user-chat-history', views.ChatWorkflowGetUserChatHistoryView.as_view(), name='user-chat-history'),
+    path('return-dto', views.ReturnWorkflowDto.as_view(), name='return-dto'),
 ]
