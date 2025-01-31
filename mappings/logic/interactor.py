@@ -45,7 +45,7 @@ class MappingsInteractor(ConfigInteractor):
         logger.info("Mapping init questions list: %s", questions)
         return self._initialize(chat_id, questions)
 
-    def chat(self, token, chat_id, return_object, question, user_script):
+    def chat(self, token, chat_id, return_object, question, user_script, user_file=None):
         super().chat(token, chat_id, question, return_object, user_script)
         current_script = ""
         if user_script is None or return_object == prompts.Keys.AUTOCOMPLETE.value:

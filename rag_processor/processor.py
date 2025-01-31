@@ -102,7 +102,7 @@ class RagProcessor(ABC):
             logger.info("INITIALIZING LLM")
             return ChatOpenAI(
                 model=model,
-                openai_api_key=OPENAI_API_KEY,
+                openai_api_key=DEEPSEEK_API_KEY if model == 'deepseek-chat' else OPENAI_API_KEY,
                 openai_api_base=openai_api_base,
                 temperature=temperature,
                 max_tokens=max_tokens,

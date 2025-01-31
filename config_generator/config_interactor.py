@@ -34,7 +34,7 @@ class ConfigInteractor(ABC):
             raise e
 
     @abstractmethod
-    def chat(self, token, chat_id, question, return_object, user_data):
+    def chat(self, token, chat_id, question, return_object, user_data, user_file=None):
         self.is_chat_initialized_helper(token, chat_id)
 
     def clear_chat(self, token, chat_id):

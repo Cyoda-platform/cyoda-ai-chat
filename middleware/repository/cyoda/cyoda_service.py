@@ -187,7 +187,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _lock_entity_schema(token, entity_name, version, data):
-        path = f"treeNode/model/{entity_name}/{version}/lock"
+        path = f"model/{entity_name}/{version}/lock"
 
         try:
             response = send_put_request(token=token, api_url=API_URL, path=path, data=data)
@@ -208,7 +208,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _save_new_entity(token, model, version, data):
-        path = f"entity/JSON/TREE/{model}/{version}"
+        path = f"entity/JSON/{model}/{version}"
         logger.info(f"Saving new entity to path: {path}")
 
         try:
@@ -228,7 +228,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _model_exists(token, model_name, model_version):
-        export_model_url = f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}"
+        export_model_url = f"model/export/SIMPLE_VIEW/{model_name}/{model_version}"
 
         response = send_get_request(token, API_URL, export_model_url)
 
@@ -241,7 +241,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _delete_all_entities(token, model_name, model_version):
-        delete_entities_url = f"entity/TREE/{model_name}/{model_version}"
+        delete_entities_url = f"entity/{model_name}/{model_version}"
 
         response = send_delete_request(token, API_URL, delete_entities_url)
 
@@ -252,7 +252,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _create_snapshot_search(token, model_name, model_version, condition):
-        search_url = f"treeNode/search/snapshot/{model_name}/{model_version}"
+        search_url = f"search/snapshot/{model_name}/{model_version}"
         logger.info(condition)
         response = send_post_request(token, API_URL, search_url, data=json.dumps(condition))
         if response.status_code == 200:
@@ -262,7 +262,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _get_snapshot_status(token, snapshot_id):
-        status_url = f"treeNode/search/snapshot/{snapshot_id}/status"
+        status_url = f"search/snapshot/{snapshot_id}/status"
 
         response = send_get_request(token, API_URL, status_url)
         if response.status_code == 200:
@@ -292,7 +292,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _get_search_result(token, snapshot_id, page_size, page_number):
-        result_url = f"treeNode/search/snapshot/{snapshot_id}"
+        result_url = f"search/snapshot/{snapshot_id}"
 
         params = {
             'pageSize': f"{page_size}",
@@ -308,7 +308,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _update_entities(meta, entities: List[Any]) -> List[Any]:
-        path = "entity/JSON/TREE"
+        path = "entity/JSON"
         payload = []
         for entity in entities:
             entities_data = {
@@ -334,7 +334,7 @@ class CyodaService(CrudRepository):
 
     @staticmethod
     def _update_entity(meta, entities: List[Any]) -> List[Any]:
-        path = "entity/JSON/TREE"
+        path = "entity/JSON"
         for entity in entities:
             entities_data = {
                 key: value for key, value in entity.to_dict().items()

@@ -4,7 +4,7 @@ from typing import List
 from rag_processor.processor import RagProcessor
 from common_utils.config import (CYODA_AI_CONFIG_GEN_CYODA_PATH, LLM_MODEL_CYODA, LLM_MAX_TOKENS_CYODA,
                                  LLM_TEMPERATURE_CYODA, LLM_TEMPERATURE_RANDOM, LLM_MAX_TOKENS_RANDOM, LLM_MODEL_RANDOM,
-                                 CYODA_AI_CONFIG_GEN_RANDOM_PATH)
+                                 CYODA_AI_CONFIG_GEN_RANDOM_PATH, LLM_MODEL_RANDOM_API_BASE)
 
 logger = logging.getLogger('django')
 
@@ -18,7 +18,7 @@ class RandomProcessor(RagProcessor):
             temperature=LLM_TEMPERATURE_RANDOM,
             max_tokens=LLM_MAX_TOKENS_RANDOM,
             model=LLM_MODEL_RANDOM,
-            openai_api_base=None,
+            openai_api_base=LLM_MODEL_RANDOM_API_BASE,
             path=CYODA_AI_CONFIG_GEN_RANDOM_PATH,
             config_docs=[],
             system_prompt=QA_SYSTEM_PROMPT

@@ -33,7 +33,7 @@ class WorkflowsInteractor(ConfigInteractor):
         self.workflow_generation_service = workflow_generation_service
         self.processor = processor
 
-    def chat(self, token, chat_id, question, return_object, json_data):
+    def chat(self, token, chat_id, question, return_object, json_data, user_file=None):
 
         try:
             super().chat(token, chat_id, question, return_object, json_data)
