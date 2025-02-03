@@ -31,7 +31,7 @@ class MappingsInteractor(ConfigInteractor):
         super().initialize_chat(token, chat_id, str(ds_input))
         model_name, model_version = entity_name.split(".")
         entity_response = common_utils.utils.send_get_request(token, API_URL,
-                                                              f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
+                                                              f"model/export/SIMPLE_VIEW/{model_name}/{model_version}")
         entity_body = entity_response.json()['model']
         if CYODA_APP_NAME.lower() == 'cyoda':
             logger.info("Working with cyoda model")
