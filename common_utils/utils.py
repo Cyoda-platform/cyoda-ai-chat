@@ -295,17 +295,17 @@ def validate_and_parse_json(
     logger.error("Maximum retry attempts reached. Validation failed.")
     raise ValueError("JSON validation failed after retries.")
 
-def process_uploaded_file(self, file):
+def process_uploaded_file(processor, file):
     mime_type = get_mime_type(file)
-    file_content, metadata = process_uploaded_file_by_mime(self, file, mime_type)
+    file_content, metadata = process_uploaded_file_by_mime(processor, file, mime_type)
     if "Unsupported file type" in metadata.get("error", ""):
         extension = get_file_extension(file.name)
         mime_type = guess_mime_type_from_extension(extension)
         if mime_type:
-            file_content, metadata = process_uploaded_file_by_mime(self, file, mime_type)
+            file_content, metadata = process_uploaded_file_by_mime(processor, file, mime_type)
     return file_content, metadata
 
-def process_uploaded_file_by_mime(self, file, mime_type):
+def process_uploaded_file_by_mime(processor, file, mime_type):
     """
     Processes a file based on its MIME type.
     Returns the file's contents and metadata.
@@ -315,11 +315,11 @@ def process_uploaded_file_by_mime(self, file, mime_type):
             image_bytes = convert_svg_to_png(file)
             image_file = io.BytesIO(image_bytes)
             mime_type = get_mime_type(image_file)
-            content = self.processor.image_description(image_file, mime_type)
+            content = processor.image_description(image_file, mime_type)
             return content, {"type": "svg", "filename": file.name}
 
         elif mime_type.startswith("image/"):
-            content = self.processor.image_description(file, mime_type)
+            content = processor.image_description(file, mime_type)
             return content, {"type": "image", "filename": file.name}
 
         elif mime_type == "application/pdf":
