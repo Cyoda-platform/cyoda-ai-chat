@@ -285,8 +285,6 @@ class TrinoProcessor(RagProcessor):
         if TRINO_ENABLED.lower() == "true":
             current_time = time.monotonic()
             username = self.get_username(token)
-            #user_id = decoded.get("userId")
-            #todo maybe use user_id instead of username?
             username_trinohost = f"{username}_{trino_host}"
 
             # Check if connection already exists **without lock**
@@ -374,7 +372,7 @@ class TrinoProcessor(RagProcessor):
 
             agent = None
             if INIT_LLM.lower() == "true":
-                agent = self._initialize_agent(username_trinohost, db)
+                agent = self._initialize_agent(db)
             if agent:
                 self.agent_pool[username_trinohost] = (agent, current_time)
             return agent
@@ -390,7 +388,7 @@ class TrinoProcessor(RagProcessor):
             logger.info(f"Removing idle agent: {key}")
             del self.agent_pool[key]
 
-    def _initialize_agent(self, connection_string: str, db: TrinoQueryTool) -> Optional[AgentExecutor]:
+    def _initialize_agent(self, db: TrinoQueryTool) -> Optional[AgentExecutor]:
         """
         Initializes an agent instance for a specific Trino connection.
         """
@@ -497,7 +495,6 @@ class TrinoProcessor(RagProcessor):
         """
         Runs an SQL query using the appropriate database connection.
         """
-        #todo avoid pool by trino_conn_dict with token - same user with diff tokens unable to reuse connection
         db = self.get_database(token, trino_host)
         if db is None:
             logger.error("Database connection is not initialized.")
