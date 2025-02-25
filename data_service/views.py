@@ -71,7 +71,13 @@ class ChatTrinoView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             question = request.data.get("question")
-            response = interactor.chat(token, chat_id, question, "None", "None")
+            trino_host = request.headers.get("Trino-host")
+            if not trino_host:
+                return Response(
+                    {"success": False, "message": "Trino-host header is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            response = interactor.chat(token, chat_id, question, "None", "None", trino_host)
             answer = get_user_answer(response)
             interactor.add_user_chat_hitory(token, chat_id, question, answer, "chat")
             return Response(response, status=status.HTTP_200_OK)
@@ -94,7 +100,14 @@ class ChatTrinoRunQueryView(views.APIView):
     def post(self, request, *args, **kwargs):
         logger.info("Starting ChatTrinoView")
         try:
-            response = interactor.run_query(request.data["query"])
+            token = request.headers.get("Authorization")
+            trino_host = request.headers.get("Trino-host")
+            if not trino_host:
+                return Response(
+                    {"success": False, "message": "Trino-host header is missing"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            response = interactor.run_query(token, trino_host, request.data["query"])
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Error processing trino chat: %s", e)
