@@ -77,7 +77,7 @@ class ChatTrinoView(views.APIView):
                     {"success": False, "message": "Trino-host header is missing"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            response = interactor.chat(token, chat_id, question, "None", "None", trino_host)
+            response = interactor.chat(token, chat_id, question, "None", "None", trino_host=trino_host)
             answer = get_user_answer(response)
             interactor.add_user_chat_hitory(token, chat_id, question, answer, "chat")
             return Response(response, status=status.HTTP_200_OK)

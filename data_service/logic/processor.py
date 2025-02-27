@@ -16,7 +16,7 @@ from common_utils.config import (
     TRINO_CONNECTION_STRING,
     CYODA_AI_CONFIG_GEN_TRINO_PATH,
     WORK_DIR,
-    TRINO_PROMPT_PATH, TRINO_USER, TRINO_PASSWORD, TRINO_CONNECTION_PATH
+    TRINO_PROMPT_PATH, TRINO_CONNECTION_PATH
 )
 from langchain_community.utilities.sql_database import SQLDatabase
 

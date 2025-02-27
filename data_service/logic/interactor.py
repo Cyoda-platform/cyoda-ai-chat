@@ -17,7 +17,7 @@ class TrinoInteractor(ConfigInteractor):
         self.processor = processor
         logger.info("Initializing TrinoInteractor...")
 
-    def chat(self, token, chat_id, question, return_object, user_data, trino_host=None):
+    def chat(self, token, chat_id, question, return_object, user_data, user_file=None, trino_host=None):
         try:
             super().chat(token, chat_id, question, return_object, user_data)
             meta = self._get_cache_meta(token, chat_id, CacheEntity)
