@@ -2,6 +2,7 @@ import logging
 import threading
 import time
 from typing import Optional
+from urllib.parse import urlparse
 
 import trino
 from google.auth import jwt
@@ -308,10 +309,13 @@ class TrinoProcessor(RagProcessor):
                 try:
                     logger.info(f"Creating new connection for {username_trinohost}")
                     port, catalog, schema = TRINO_CONNECTION_PATH.split('/')
+                    parsed_trino_host = urlparse(trino_host)
+                    http_scheme = parsed_trino_host.scheme
+                    host = parsed_trino_host.hostname
                     trino_conn = trino.dbapi.connect(
-                        host=f"trino-{trino_host}",
+                        host=f"trino-{host}",
                         port=int(port),
-                        http_scheme="https",
+                        http_scheme=http_scheme,
                         auth=CustomJWTAuthentication(token),
                         catalog=catalog,
                         schema=schema,
