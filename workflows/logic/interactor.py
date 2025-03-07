@@ -136,7 +136,7 @@ class WorkflowsInteractor(ConfigInteractor):
 
     def _save_workflow_from_json(self, token, workflow_json, class_name):
         validate_result(workflow_json, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}")
-        input_json = json.loads(workflow_json)
+        input_json = workflow_json if isinstance(workflow_json, dict) else json.loads(workflow_json)
         cyoda_dto_map = self.workflow_generation_service.parse_ai_to_cyoda_dto(input_json=input_json, class_name=class_name)
         return self.workflow_generation_service.save_workflow(token, cyoda_dto_map)
 
@@ -213,6 +213,6 @@ class WorkflowsInteractor(ConfigInteractor):
 
     def return_workflow_dto_from_valid_json(self, workflow_json, class_name):
         validate_result(workflow_json, f"{WORK_DIR}/{WORKFLOW_SCHEMA_PATH}")
-        input_json = json.loads(workflow_json)
+        input_json = workflow_json if isinstance(workflow_json, dict) else json.loads(workflow_json)
         cyoda_dto_map = self.workflow_generation_service.parse_ai_to_cyoda_dto(input_json=input_json, class_name=class_name)
         return json.dumps(cyoda_dto_map, separators=(',', ':'))

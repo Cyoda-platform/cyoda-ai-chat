@@ -53,7 +53,7 @@ def parse_json(result: str) -> str:
             return result[start_index:end_index].strip()
     return result
 
-def validate_result(parsed_result: str, file_path: str) -> bool:
+def validate_result(parsed_result: str | dict, file_path: str) -> bool:
     try:
         with open(file_path, "r") as schema_file:
             schema = json.load(schema_file)
@@ -62,7 +62,7 @@ def validate_result(parsed_result: str, file_path: str) -> bool:
         raise
 
     try:
-        json_data = json.loads(parsed_result)
+        json_data = parsed_result if isinstance(parsed_result, dict) else json.loads(parsed_result)
         validator = jsonschema.Draft7Validator(schema)
         errors = sorted(validator.iter_errors(json_data), key=lambda e: e.path)
 
