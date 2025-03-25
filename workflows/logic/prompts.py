@@ -12,13 +12,13 @@ class Keys(Enum):
 
 
 RETURN_DATA = {
-    Keys.GENERATE_WORKFLOW_FROM_IMAGE.value: "",
-    Keys.GENERATE_WORKFLOW_FROM_URL.value: "",
-    # Keys.GENERATE_TRANSITION.value: "",
-    Keys.GENERATE_WORKFLOW.value: "",
-    Keys.SOURCES.value: "",
-    Keys.SAVE_WORKFLOW.value: "",
-    Keys.RANDOM.value: ""
+    Keys.GENERATE_WORKFLOW_FROM_IMAGE.value: "Generate a workflow JSON from an attached image",
+    Keys.GENERATE_WORKFLOW_FROM_URL.value: "Generate a workflow JSON from an image URL",
+    Keys.GENERATE_WORKFLOW.value: "Generate a workflow JSON from a text description",
+    Keys.SOURCES.value: "Add sources from a URL to the knowledge base",
+    Keys.SAVE_WORKFLOW.value: "Save the workflow from a JSON message",
+    Keys.RANDOM.value: "Get a free-form response from the chatbot"
 }
+
 
 WORKFLOWS_DEFAULT_PROMPTS = []
