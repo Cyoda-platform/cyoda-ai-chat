@@ -39,6 +39,9 @@ class WorkflowsInteractor(ConfigInteractor):
             super().chat(token, chat_id, question, return_object, json_data)
             class_name = json_data.get("class_name")
 
+            if not class_name:
+                return {"success": False, "message": "class_name is missing"}
+
             if return_object == prompts.Keys.GENERATE_WORKFLOW_FROM_IMAGE.value:
                 image_file = json_data.get('file')
                 if image_file is None:
@@ -47,8 +50,8 @@ class WorkflowsInteractor(ConfigInteractor):
                 return {"success": True,
                         "message": f"{result}"}
 
-            if not question or not class_name:
-                return {"success": False, "message": "question or class_name is missing"}
+            if not question:
+                return {"success": False, "message": "question is missing"}
 
             if return_object == prompts.Keys.GENERATE_WORKFLOW_FROM_URL.value:
                 result = self._generate_workflow_from_image_url(chat_id, token, question, class_name)
