@@ -12,6 +12,7 @@ from . import prompts
 logger = logging.getLogger('django')
 chat_id_prefix = "mappings"
 
+
 class MappingsInteractor(ConfigInteractor):
     """
     A class that interacts with mappings for a chat system.
@@ -29,23 +30,26 @@ class MappingsInteractor(ConfigInteractor):
             "Mapping parameters: Entity=%s, Data source input=%s", entity_name, ds_input
         )
         super().initialize_chat(token, chat_id, str(ds_input))
-        model_name, model_version = entity_name.split(".")
-        entity_response = common_utils.utils.send_get_request(token, API_URL,
-                                                              f"treeNode/model/export/SIMPLE_VIEW/{model_name}/{model_version}")
-        entity_body = entity_response.json()['model']
+
         if CYODA_APP_NAME.lower() == 'cyoda':
             logger.info("Working with cyoda model")
+            model_name, model_version = entity_name.split(".")
+            entity_response = common_utils.utils.send_get_request(token, API_URL,
+                                                                  f"model/export/SIMPLE_VIEW/{model_name}/{model_version}")
+            entity_body = entity_response.json()['model']
             questions = [
                 prompts.MAPPINGS_INITIAL_PROMPT_CYODA.format(ds_input, entity_body),
             ]
-        else:
+        elif CYODA_APP_NAME.lower() == 'cobi':
             questions = [
-                prompts.MAPPINGS_INITIAL_PROMPT_COBI.format(ds_input, entity_body),
+                prompts.MAPPINGS_INITIAL_PROMPT_COBI.format(ds_input, entity_name),
             ]
+        else:
+            raise Exception(f"invalid CYODA_APP_NAME {CYODA_APP_NAME}")
         logger.info("Mapping init questions list: %s", questions)
         return self._initialize(chat_id, questions)
 
-    def chat(self, token, chat_id, return_object, question, user_script):
+    def chat(self, token, chat_id, return_object, question, user_script, user_file=None):
         super().chat(token, chat_id, question, return_object, user_script)
         current_script = ""
         if user_script is None or return_object == prompts.Keys.AUTOCOMPLETE.value:
@@ -104,14 +108,14 @@ class MappingsInteractor(ConfigInteractor):
         try:
             script_result = parse_json(script_result)
             script = {
-                    "script": {"body": script_result, "inputSrcPaths": []}
+                "script": {"body": script_result, "inputSrcPaths": []}
             }
             return script
         except json.JSONDecodeError as e:
             logger.error("Invalid JSON response from processor: %s", e, exc_info=True)
             # Handle JSON decoding error appropriately
             raise APIException("Invalid JSON response from processor", e)
-        
+
     def generate_paths(self, data, current_path=""):
         logger.info("CURRENT_DATA")
         logger.info(data)

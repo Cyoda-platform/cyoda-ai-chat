@@ -37,7 +37,7 @@ class ConnectionsInteractor(ConfigInteractor):
         logger.info("Initializing ConnectionsInteractor...")
         self.processor = processor
 
-    def chat(self, token: str, chat_id: str, return_object: str, question: str, user_data: str) -> dict:
+    def chat(self, token: str, chat_id: str, return_object: str, question: str, user_data: str, user_file=None) -> dict:
         super().chat(token, chat_id, question, return_object, user_data)
         try:
             self.validate_chat_input(chat_id, return_object, question)

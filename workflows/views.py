@@ -53,8 +53,8 @@ class ChatWorkflowView(views.APIView):
             answer = get_user_answer(response)
             interactor.add_user_chat_hitory(token, chat_id, question, answer, return_object)
             ##todo need to improve here!
-            if return_object in [prompts.Keys.GENERATE_WORKFLOW_FROM_URL.value, prompts.Keys.SAVE_WORKFLOW.value]:
-                interactor.update_chat_id(token, chat_id, chat_id_prefix + answer.replace("Workflow id = ", ""))
+            # if return_object in [prompts.Keys.GENERATE_WORKFLOW_FROM_URL.value, prompts.Keys.SAVE_WORKFLOW.value]:
+            #     interactor.update_chat_id(token, chat_id, chat_id_prefix + answer.replace("Workflow id = ", ""))
             return Response(response)
         except Exception as e:
             logger.error(f"Error processing chat workflow: {e}")
@@ -117,4 +117,29 @@ class GenerateWorkflowConfigView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         response_data = interactor.save_workflow_entity(token, request.data, class_name)
+        return Response(response_data)
+
+class ReturnWorkflowDto(views.APIView):
+
+    def post(self, request, *args, **kwargs):
+        logger.info("Starting ReturnWorkflowDto")
+        token = request.headers.get("Authorization")
+        if not token:
+            return Response(
+                {"success": False, "message": "Authorization header is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        class_name = request.data.get("class_name")
+        if not class_name:
+            return Response(
+                {"success": False, "message": "class_name is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        workflow_json = request.data.get("workflow_json")
+        if not workflow_json:
+            return Response(
+                {"success": False, "message": "workflow_json is missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        response_data = interactor.return_workflow_dto_from_valid_json(workflow_json, class_name)
         return Response(response_data)
